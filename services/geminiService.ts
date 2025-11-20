@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Difficulty, GeneratedMCQResponse, GeneratedStationResponse } from "../types";
 
-const apiKey = process.env.API_KEY || '';
+const apiKey = process.env.GEMINI_API_KEY || '';
 
 // Initialize Gemini Client
 // Note: In a real app, ensure usage of a backend proxy or secure environment variable handling.
