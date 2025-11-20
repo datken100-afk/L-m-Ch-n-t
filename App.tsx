@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './components/LoginScreen';
@@ -34,28 +35,24 @@ const App: React.FC = () => {
 
   const currentYear = new Date().getFullYear();
 
-  if (!user) {
-    return (
-      <LoginScreen 
-        onLogin={handleLogin} 
-        darkMode={darkMode} 
-        toggleDarkMode={() => setDarkMode(!darkMode)} 
-      />
-    );
-  }
-
   const renderContent = () => {
     switch (mode) {
       case AppMode.MCQ:
-        return <MCQMode onBack={() => setMode(AppMode.HOME)} />;
+        return (
+          // Removed animate-fade-up to prevent breaking fixed positioning of Timer and Result Bar
+          <MCQMode onBack={() => setMode(AppMode.HOME)} />
+        );
       case AppMode.STATION:
-        return <StationMode onBack={() => setMode(AppMode.HOME)} />;
+        return (
+          // Removed animate-fade-up to prevent breaking fixed positioning of Station Runner
+          <StationMode onBack={() => setMode(AppMode.HOME)} />
+        );
       default:
         return (
-          <div className="max-w-4xl mx-auto pt-10">
+          <div className="max-w-4xl mx-auto pt-10 animate-fade-up">
             <div className="text-center mb-16 space-y-4">
-              <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight animate-in fade-in slide-in-from-bottom-4 duration-700">
-                Xin chào, <span className="text-medical-600 dark:text-medical-400">{user.fullName}</span>
+              <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+                Xin chào, <span className="text-amber-600 dark:text-amber-400">{user?.fullName}</span>
               </h1>
               <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
                 Chọn chế độ để bắt đầu ôn luyện kiến thức Giải phẫu học ngay hôm nay.
@@ -66,7 +63,7 @@ const App: React.FC = () => {
               {/* MCQ Card */}
               <button
                 onClick={() => setMode(AppMode.MCQ)}
-                className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden"
+                className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02]"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative z-10">
@@ -89,7 +86,7 @@ const App: React.FC = () => {
               {/* Station Card */}
               <button
                 onClick={() => setMode(AppMode.STATION)}
-                className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden"
+                className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02]"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 dark:bg-teal-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative z-10">
@@ -124,15 +121,27 @@ const App: React.FC = () => {
   };
 
   return (
-    <Layout 
-      user={user} 
-      onLogout={handleLogout} 
-      onUpdateUser={handleUpdateUser}
-      darkMode={darkMode}
-      toggleDarkMode={() => setDarkMode(!darkMode)}
-    >
-      {renderContent()}
-    </Layout>
+    <>
+      {!user ? (
+        <div className="w-full h-full animate-fade-up">
+          <LoginScreen 
+            onLogin={handleLogin} 
+            darkMode={darkMode} 
+            toggleDarkMode={() => setDarkMode(!darkMode)} 
+          />
+        </div>
+      ) : (
+        <Layout 
+          user={user} 
+          onLogout={handleLogout} 
+          onUpdateUser={handleUpdateUser}
+          darkMode={darkMode}
+          toggleDarkMode={() => setDarkMode(!darkMode)}
+        >
+          {renderContent()}
+        </Layout>
+      )}
+    </>
   );
 };
 
