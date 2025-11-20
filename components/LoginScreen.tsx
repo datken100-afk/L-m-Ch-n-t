@@ -96,7 +96,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
 
             <button
               type="submit"
-              className="w-full bg-medical-600 hover:bg-medical-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 group"
+              className="w-full glow-button bg-medical-600 hover:bg-medical-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 group"
             >
               <span>Bắt đầu học</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

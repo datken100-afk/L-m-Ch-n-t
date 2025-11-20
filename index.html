@@ -100,6 +100,49 @@
       .text-glow-white {
         text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
       }
+
+      .glow-button {
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .glow-button::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 0.75rem;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      }
+
+      .glow-button:active::before,
+      .glow-button:hover::before {
+        opacity: 1;
+        animation: glow-pulse 0.6s ease-out;
+      }
+
+      @keyframes glow-pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7),
+                      inset 0 0 20px rgba(255, 255, 255, 0.3);
+          opacity: 1;
+        }
+        100% {
+          box-shadow: 0 0 0 10px rgba(255, 255, 255, 0),
+                      inset 0 0 0px rgba(255, 255, 255, 0);
+          opacity: 0;
+        }
+      }
+
+      .glow-button:active {
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.6),
+                    inset 0 0 20px rgba(255, 255, 255, 0.3);
+      }
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
