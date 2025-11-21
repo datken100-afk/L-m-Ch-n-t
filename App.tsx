@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './components/LoginScreen';
@@ -11,6 +10,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [darkMode, setDarkMode] = useState(false);
+  const [isLoginExiting, setIsLoginExiting] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -21,7 +21,14 @@ const App: React.FC = () => {
   }, [darkMode]);
 
   const handleLogin = (loggedInUser: UserProfile) => {
-    setUser(loggedInUser);
+    // Trigger exit animation
+    setIsLoginExiting(true);
+    
+    // Wait for animation to finish before switching views
+    setTimeout(() => {
+        setUser(loggedInUser);
+        setIsLoginExiting(false);
+    }, 800);
   };
 
   const handleLogout = () => {
@@ -39,68 +46,66 @@ const App: React.FC = () => {
     switch (mode) {
       case AppMode.MCQ:
         return (
-          // Removed animate-fade-up to prevent breaking fixed positioning of Timer and Result Bar
           <MCQMode onBack={() => setMode(AppMode.HOME)} />
         );
       case AppMode.STATION:
         return (
-          // Removed animate-fade-up to prevent breaking fixed positioning of Station Runner
           <StationMode onBack={() => setMode(AppMode.HOME)} />
         );
       default:
         return (
-          <div className="max-w-4xl mx-auto pt-10 animate-fade-up">
+          <div className="max-w-4xl mx-auto pt-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <div className="text-center mb-16 space-y-4">
               <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                Xin chào, <span className="text-amber-600 dark:text-amber-400">{user?.fullName}</span>
+                Xin chào, <span className="text-red-600 dark:text-red-500">{user?.fullName}</span>
               </h1>
               <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-                Chọn chế độ để bắt đầu ôn luyện kiến thức Giải phẫu học ngay hôm nay.
+                Chọn chế độ để bắt đầu ôn luyện kiến thức Giải phẫu học (Mùa Giáng Sinh 🎄).
               </p>
             </div>
 
             <div className="grid md:grid-cols-2 gap-8">
-              {/* MCQ Card */}
+              {/* MCQ Card - Red Theme */}
               <button
                 onClick={() => setMode(AppMode.MCQ)}
                 className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02]"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 dark:bg-blue-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-50 dark:bg-red-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative z-10">
                   <div 
-                    className="w-16 h-16 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-2xl flex items-center justify-center mb-6 liquid-icon"
-                    style={{ '--glow-color': 'rgba(37, 99, 235, 0.8)' } as React.CSSProperties}
+                    className="w-16 h-16 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-2xl flex items-center justify-center mb-6 liquid-icon"
+                    style={{ '--glow-color': 'rgba(220, 38, 38, 0.8)' } as React.CSSProperties}
                   >
                     <BookOpen className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Trắc Nghiệm</h3>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Trắc Nghiệm</h3>
                   <p className="text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                    Tạo đề thi trắc nghiệm nhanh chóng theo chủ đề (Xương, Cơ, Thần kinh...). Giải thích chi tiết từng đáp án.
+                    Tạo đề thi trắc nghiệm nhanh chóng theo chủ đề (Xương, Cơ, Thần kinh...). Giải thích chi tiết.
                   </p>
-                  <div className="flex items-center text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-2 transition-transform">
+                  <div className="flex items-center text-red-600 dark:text-red-400 font-semibold group-hover:translate-x-2 transition-transform">
                     Bắt đầu ngay <ChevronRight className="w-5 h-5 ml-1" />
                   </div>
                 </div>
               </button>
 
-              {/* Station Card */}
+              {/* Station Card - Emerald/Green Theme */}
               <button
                 onClick={() => setMode(AppMode.STATION)}
                 className="group bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md hover:shadow-2xl border border-slate-100 dark:border-slate-700 transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02]"
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 dark:bg-teal-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/20 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500"></div>
                 <div className="relative z-10">
                   <div 
-                    className="w-16 h-16 bg-teal-100 dark:bg-teal-900/50 text-teal-600 dark:text-teal-400 rounded-2xl flex items-center justify-center mb-6 liquid-icon"
-                    style={{ '--glow-color': 'rgba(13, 148, 136, 0.8)' } as React.CSSProperties}
+                    className="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 rounded-2xl flex items-center justify-center mb-6 liquid-icon"
+                    style={{ '--glow-color': 'rgba(16, 185, 129, 0.8)' } as React.CSSProperties}
                   >
                     <Activity className="w-8 h-8" />
                   </div>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Chạy Trạm (Spot Test)</h3>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Chạy Trạm (Spot Test)</h3>
                   <p className="text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-                    Mô phỏng thi thực hành. Tải lên hình ảnh giải phẫu, AI sẽ tạo câu hỏi định danh và tính giờ tự động.
+                    Mô phỏng thi thực hành. AI tạo câu hỏi định danh và tính giờ tự động.
                   </p>
-                  <div className="flex items-center text-teal-600 dark:text-teal-400 font-semibold group-hover:translate-x-2 transition-transform">
+                  <div className="flex items-center text-emerald-600 dark:text-emerald-400 font-semibold group-hover:translate-x-2 transition-transform">
                     Tạo trạm thi <ChevronRight className="w-5 h-5 ml-1" />
                   </div>
                 </div>
@@ -123,23 +128,26 @@ const App: React.FC = () => {
   return (
     <>
       {!user ? (
-        <div className="w-full h-full animate-fade-up">
-          <LoginScreen 
-            onLogin={handleLogin} 
-            darkMode={darkMode} 
-            toggleDarkMode={() => setDarkMode(!darkMode)} 
-          />
-        </div>
+        <LoginScreen 
+          onLogin={handleLogin} 
+          darkMode={darkMode} 
+          toggleDarkMode={() => setDarkMode(!darkMode)} 
+          isExiting={isLoginExiting}
+        />
       ) : (
-        <Layout 
-          user={user} 
-          onLogout={handleLogout} 
-          onUpdateUser={handleUpdateUser}
-          darkMode={darkMode}
-          toggleDarkMode={() => setDarkMode(!darkMode)}
-        >
-          {renderContent()}
-        </Layout>
+        // Wrapped in smooth fade-in transition
+        <div className="animate-in fade-in zoom-in-95 duration-1000 ease-[cubic-bezier(0.25,1,0.5,1)]">
+            <Layout 
+              user={user} 
+              onLogout={handleLogout} 
+              onUpdateUser={handleUpdateUser}
+              darkMode={darkMode}
+              toggleDarkMode={() => setDarkMode(!darkMode)}
+              showFeedback={mode === AppMode.HOME}
+            >
+              {renderContent()}
+            </Layout>
+        </div>
       )}
     </>
   );

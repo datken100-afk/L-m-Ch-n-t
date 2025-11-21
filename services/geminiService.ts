@@ -2,24 +2,26 @@
 import { GoogleGenAI, Type, Schema, GenerateContentResponse } from "@google/genai";
 import { Difficulty, GeneratedMCQResponse, GeneratedStationResponse, MentorResponse, StationItem } from "../types";
 
+// Lấy API Key từ biến môi trường (Vercel Environment Variable)
 const apiKey = process.env.API_KEY || '';
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey });
 
-// UPGRADE: Use Gemini 3 Pro for superior reasoning, thinking capabilities, and context handling
-const modelId = "gemini-3-pro-preview";
+// UPGRADE: Use Gemini 3 Pro for superior reasoning
+const MODEL_MCQ = "gemini-3-pro-preview";
+const MODEL_VISION = "gemini-2.5-flash"; // Updated from 1.5 to 2.5
+const MODEL_CHAT = "gemini-2.5-flash";
 
 interface ContentFile {
     content: string;
     isText: boolean;
 }
 
-// Token Limits (Approximate 1 token = 4 chars)
-// Limit total text input to ~3.5M characters (~875k tokens) to be safe under the 1M token limit
-const LIMIT_THEORY_CHARS = 2400000; // ~600k tokens
-const LIMIT_CLINICAL_CHARS = 1000000; // ~250k tokens
-const LIMIT_SAMPLE_CHARS = 200000; // ~50k tokens
+// Token Limits
+const LIMIT_THEORY_CHARS = 2400000; 
+const LIMIT_CLINICAL_CHARS = 1000000; 
+const LIMIT_SAMPLE_CHARS = 200000; 
 
 // --- RETRY LOGIC HELPER ---
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -37,7 +39,7 @@ async function retryGeminiCall<T>(
     } catch (error: any) {
       lastError = error;
       
-      // Check for Rate Limit (429) or Quota Exceeded or Service Unavailable (503)
+      // Check for common API errors
       const isRateLimit = 
         error.status === 429 || 
         error.status === 503 ||
@@ -48,23 +50,28 @@ async function retryGeminiCall<T>(
           error.message.includes("Overloaded")
         ));
 
+      // Check for Model Not Found (404) - Usually due to old code or region lock
+      if (error.status === 404 || (error.message && error.message.includes("not found"))) {
+          console.error("Model Not Found Error. Please check if you are using the latest code and a valid API Key.");
+          throw new Error(`Lỗi Model AI (${error.status}): Không tìm thấy Model. Vui lòng Redeploy code mới nhất lên Vercel.`);
+      }
+
       if (isRateLimit) {
-        if (i === retries - 1) break; // Don't wait on the last fail
-        console.warn(`Gemini Rate Limit/Overload hit. Retrying in ${initialDelay}ms... (Attempt ${i + 1}/${retries})`);
+        if (i === retries - 1) break; 
+        console.warn(`Gemini Rate Limit hit. Retrying in ${initialDelay}ms... (Attempt ${i + 1}/${retries})`);
         await wait(initialDelay);
-        initialDelay *= 2; // Exponential backoff
+        initialDelay *= 2; 
       } else {
-        throw error; // Not a rate limit error, throw immediately
+        throw error; 
       }
     }
   }
   
-  // If we get here, we exhausted retries
   const cleanMsg = lastError?.message || "Unknown error";
   if (cleanMsg.includes("quota") || cleanMsg.includes("RESOURCE_EXHAUSTED")) {
       throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded). Vui lòng kiểm tra gói cước hoặc thử lại vào ngày mai.");
   }
-  throw new Error("Hệ thống AI đang quá tải. Vui lòng thử lại sau vài giây.");
+  throw new Error(`Lỗi kết nối AI: ${cleanMsg}`);
 }
 
 export const generateMCQQuestions = async (
@@ -73,9 +80,8 @@ export const generateMCQQuestions = async (
   difficulties: Difficulty[],
   files: { theory?: ContentFile[]; clinical?: ContentFile[]; sample?: ContentFile[] } = {}
 ): Promise<GeneratedMCQResponse> => {
-  if (!apiKey) throw new Error("API Key is missing");
+  if (!apiKey) throw new Error("Chưa cấu hình API Key. Vui lòng thêm API_KEY vào Vercel Environment Variables.");
 
-  // 1. Construct the prompt with STRICT instructions for file usage
   let systemInstruction = `
     Bạn là một giáo sư Y khoa hàng đầu. Nhiệm vụ của bạn là tạo đề thi trắc nghiệm giải phẫu học chất lượng cao.
     
@@ -84,11 +90,10 @@ export const generateMCQQuestions = async (
        - ${Difficulty.REMEMBER} (Ghi nhớ)
        - ${Difficulty.UNDERSTAND} (Hiểu)
        - ${Difficulty.APPLY} (Vận dụng thấp)
-       AI cần phân biệt rõ ba mức độ này dựa trên độ sâu của kiến thức lý thuyết.
 
     2. DỮ LIỆU LÂM SÀNG (Clinical): CHỈ được sử dụng để tạo câu hỏi mức độ:
        - ${Difficulty.CLINICAL} (Lâm sàng/Ca bệnh)
-       Câu hỏi lâm sàng bắt buộc phải là các Case Study (tình huống bệnh nhân) cụ thể, yêu cầu chẩn đoán, tiên lượng hoặc giải phẫu ứng dụng thực tế.
+       Câu hỏi lâm sàng bắt buộc phải là các Case Study (tình huống bệnh nhân) cụ thể.
 
     3. ĐỀ THI MẪU: Nếu có, hãy học phong cách đặt câu hỏi và format từ đó.
 
@@ -112,7 +117,7 @@ export const generateMCQQuestions = async (
             options: { type: Type.ARRAY, items: { type: Type.STRING } },
             correctAnswer: { type: Type.STRING },
             explanation: { type: Type.STRING },
-            difficulty: { type: Type.STRING, description: "Mức độ khó chính xác (Ghi nhớ, Hiểu, Vận dụng thấp, Lâm sàng)" },
+            difficulty: { type: Type.STRING },
           },
           required: ["question", "options", "correctAnswer", "explanation", "difficulty"],
         },
@@ -121,10 +126,8 @@ export const generateMCQQuestions = async (
     required: ["questions"],
   };
 
-  // 2. Construct Multimodal Parts with Explicit Context Separation
   const parts: any[] = [];
 
-  // Helper to add and truncate content parts
   const addContentParts = (fileItems: ContentFile[] | undefined, sectionTitle: string, usageInstruction: string, charLimit: number) => {
     if (!fileItems || fileItems.length === 0) return;
 
@@ -133,7 +136,6 @@ export const generateMCQQuestions = async (
     let currentChars = 0;
 
     for (const item of fileItems) {
-        // Stop adding files if limit is reached
         if (currentChars >= charLimit) {
              parts.push({ text: `\n[CẢNH BÁO: Đã ngưng tải thêm tài liệu phần này do vượt quá giới hạn bộ nhớ cho phép]\n` });
              break;
@@ -141,7 +143,6 @@ export const generateMCQQuestions = async (
 
         if (item.content) {
             if (item.isText) {
-                // Case 1: Extracted Text
                 let textToAdd = item.content;
                 const remaining = charLimit - currentChars;
 
@@ -152,9 +153,6 @@ export const generateMCQQuestions = async (
                 parts.push({ text: `\n--- FILE CONTENT ---\n${textToAdd}\n` });
                 currentChars += textToAdd.length;
             } else {
-                // Case 2: Base64 PDF/Image (Only for small files < 20MB)
-                // Cannot easily count chars for binary, but assume it takes up context.
-                // Check mimeType if available, default to pdf assumption for now.
                 const base64Data = item.content.includes('base64,') ? item.content.split('base64,')[1] : item.content;
                 parts.push({
                     inlineData: {
@@ -162,7 +160,6 @@ export const generateMCQQuestions = async (
                         data: base64Data
                     }
                 });
-                // Arbitrary penalty for binary file to avoid infinite loop if mixed
                 currentChars += 50000; 
             }
         }
@@ -170,42 +167,21 @@ export const generateMCQQuestions = async (
     parts.push({ text: `=== KẾT THÚC PHẦN: ${sectionTitle} ===\n` });
   };
 
-  // Add files with strict limits
-  addContentParts(
-    files.theory, 
-    "TÀI LIỆU LÝ THUYẾT", 
-    `Dùng cho câu hỏi mức độ ${Difficulty.REMEMBER}, ${Difficulty.UNDERSTAND}, ${Difficulty.APPLY}.`,
-    LIMIT_THEORY_CHARS
-  );
-  
-  addContentParts(
-    files.clinical, 
-    "TÀI LIỆU LÂM SÀNG", 
-    `CHỈ Dùng cho câu hỏi mức độ ${Difficulty.CLINICAL} (Case Study).`,
-    LIMIT_CLINICAL_CHARS
-  );
-  
-  addContentParts(
-    files.sample, 
-    "ĐỀ THI MẪU", 
-    "Tham khảo cách đặt câu hỏi.",
-    LIMIT_SAMPLE_CHARS
-  );
+  addContentParts(files.theory, "TÀI LIỆU LÝ THUYẾT", `Dùng cho câu hỏi mức độ thấp.`, LIMIT_THEORY_CHARS);
+  addContentParts(files.clinical, "TÀI LIỆU LÂM SÀNG", `CHỈ Dùng cho câu hỏi mức độ ${Difficulty.CLINICAL}.`, LIMIT_CLINICAL_CHARS);
+  addContentParts(files.sample, "ĐỀ THI MẪU", "Tham khảo cách đặt câu hỏi.", LIMIT_SAMPLE_CHARS);
 
-  // Add the final trigger prompt
   parts.push({ text: `Hãy "Suy nghĩ" (Thinking) kỹ về phân phối câu hỏi, sau đó soạn thảo ${count} câu hỏi trắc nghiệm về chủ đề "${topic}" theo đúng định dạng JSON đã yêu cầu.` });
 
   try {
+    console.log(`Generating MCQs with model: ${MODEL_MCQ}`);
     const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-      model: modelId,
-      contents: {
-        parts: parts,
-      },
+      model: MODEL_MCQ,
+      contents: { parts: parts },
       config: {
         systemInstruction: systemInstruction,
         responseMimeType: "application/json",
         responseSchema: schema,
-        // Thinking Budget: Allows the model to plan the question distribution and validate clinical logic
         thinkingConfig: { thinkingBudget: 2048 }, 
       },
     }));
@@ -213,7 +189,6 @@ export const generateMCQQuestions = async (
     let text = response.text;
     if (!text) throw new Error("No response from AI");
     
-    // Robust JSON Cleaning
     const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
     if (jsonBlockMatch) {
         text = jsonBlockMatch[1];
@@ -222,38 +197,22 @@ export const generateMCQQuestions = async (
     }
     
     text = text.trim();
+    const parsed = JSON.parse(text);
 
-    let parsed: any;
-    try {
-      parsed = JSON.parse(text);
-    } catch (e) {
-      console.error("Failed to parse JSON:", text);
-      throw new Error("AI returned invalid JSON format. Please try again.");
-    }
-
-    if (!parsed || typeof parsed !== 'object') {
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.questions)) {
        throw new Error("Invalid response structure");
-    }
-
-    if (!Array.isArray(parsed.questions)) {
-        throw new Error("Response missing 'questions' array");
     }
 
     return parsed as GeneratedMCQResponse;
 
   } catch (error: any) {
     console.error("Gemini API Error:", error);
-    
-    // Pass through the specific rate limit error thrown by retryGeminiCall
-    if (error.message && (error.message.includes("quá tải") || error.message.includes("hết hạn mức"))) {
+    if (error.message && (error.message.includes("quá tải") || error.message.includes("hết hạn mức") || error.message.includes("Redeploy"))) {
         throw error;
     }
-
-    // Enhance token error
     if (error.message && error.message.includes("token count exceeds")) {
-        throw new Error("Tổng dung lượng tài liệu quá lớn vượt quá giới hạn của AI. Vui lòng bớt file hoặc dùng file nhỏ hơn.");
+        throw new Error("Tổng dung lượng tài liệu quá lớn. Vui lòng bớt file.");
     }
-    
     throw error;
   }
 };
@@ -269,42 +228,21 @@ export interface StationQuestionResponse {
 }
 
 export const generateStationQuestionFromImage = async (base64Image: string, topic?: string): Promise<StationQuestionResponse> => {
+    if (!apiKey) throw new Error("Chưa cấu hình API Key.");
+    
     const systemInstruction = `
     Bạn là giám khảo thi chạy trạm (Spot Test) Giải phẫu học cực kỳ nghiêm túc.
-    Bạn sẽ được cung cấp một hình ảnh từ tài liệu PDF.
     
-    NHIỆM VỤ 1: KIỂM TRA TÍNH HỢP LỆ & ĐÚNG CHỦ ĐỀ (QUAN TRỌNG NHẤT)
-    - Hình ảnh HỢP LỆ (isValid = true) PHẢI THỎA MÃN CẢ 2 ĐIỀU KIỆN:
-       1. Là hình giải phẫu minh họa rõ ràng, có đường chỉ dẫn (leader lines) hoặc số chú thích.
-       2. NỘI DUNG HÌNH ẢNH PHẢI LIÊN QUAN ĐẾN CHỦ ĐỀ: "${topic || 'Giải phẫu học'}".
-          - Nếu chủ đề là "Tim", nhưng hình là "Xương đùi" -> isValid = false.
-          - Nếu chủ đề là "Thần kinh", nhưng hình chỉ có "Cơ bắp" -> isValid = false.
+    NHIỆM VỤ 1: KIỂM TRA TÍNH HỢP LỆ & ĐÚNG CHỦ ĐỀ: "${topic || 'Giải phẫu học'}".
+    - Hình ảnh HỢP LỆ: Hình giải phẫu rõ ràng, có chú thích/leader lines, ĐÚNG CHỦ ĐỀ.
+    - Hình ảnh KHÔNG HỢP LỆ: Toàn chữ, Mục lục, Sai chủ đề.
 
-    - Hình ảnh KHÔNG HỢP LỆ (isValid = false): 
-       + Trang sách chỉ toàn chữ (Text-only).
-       + Mục lục, bìa sách.
-       + Hình ảnh sai chủ đề.
-       + Hình ảnh quá mờ.
+    NHIỆM VỤ 2: RA ĐỀ (Nếu Hợp lệ):
+    1. Chọn MỘT cấu trúc giải phẫu quan trọng nhất trong hình LIÊN QUAN ĐẾN CHỦ ĐỀ.
+    2. Đặt câu hỏi định danh trực tiếp (VD: "Chi tiết số 1 là gì?").
+    3. Đáp án Tiếng Việt chính xác.
 
-    NHIỆM VỤ 2: RA ĐỀ (Chỉ khi isValid = true)
-    
-    Quy tắc ra đề:
-    1. Chọn MỘT cấu trúc giải phẫu quan trọng nhất trong hình LIÊN QUAN ĐẾN CHỦ ĐỀ "${topic}".
-    2. Đặt câu hỏi định danh trực tiếp. Ví dụ: "Cấu trúc được chỉ định là gì?", "Chi tiết số X là gì?".
-    3. Đáp án phải là Tên giải phẫu chính xác (Tiếng Việt).
-    4. Giải thích ngắn gọn.
-
-    Output JSON format:
-    {
-      "isValid": boolean,
-      "questions": [
-        {
-          "questionText": "Câu hỏi...",
-          "correctAnswer": "Tên cấu trúc",
-          "explanation": "Giải thích..."
-        }
-      ]
-    }
+    Output JSON format: { "isValid": boolean, "questions": [...] }
     `;
 
     const prompt = topic 
@@ -312,11 +250,11 @@ export const generateStationQuestionFromImage = async (base64Image: string, topi
         : "Kiểm tra xem đây có phải là hình giải phẫu hợp lệ không. Nếu có, hãy tạo 1 câu hỏi trạm.";
 
     try {
-        // Remove header if present to get raw base64
         const cleanBase64 = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
         
+        console.log(`Generating Station with model: ${MODEL_VISION}`);
         const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-            model: "gemini-2.5-flash", // Use Flash for Vision speed/efficiency
+            model: MODEL_VISION,
             contents: { 
                 role: 'user', 
                 parts: [
@@ -351,17 +289,12 @@ export const generateStationQuestionFromImage = async (base64Image: string, topi
 
         let text = response.text || "";
         text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        const parsed = JSON.parse(text) as StationQuestionResponse;
-        
-        return parsed;
+        return JSON.parse(text) as StationQuestionResponse;
     } catch (e: any) {
         console.error("Vision API Error", e);
-        // IMPORTANT: If we hit a rate limit or quota limit even after retries, we MUST throw 
-        // to stop the loop in StationMode.
-        if (e.message && (e.message.includes("quá tải") || e.message.includes("quota") || e.message.includes("429"))) {
+        if (e.message && (e.message.includes("quá tải") || e.message.includes("quota") || e.message.includes("429") || e.message.includes("Redeploy"))) {
             throw e;
         }
-        // For other errors (e.g. bad image format), just return invalid so we skip this page
         return { isValid: false, questions: [] };
     }
 };
@@ -370,7 +303,8 @@ export const analyzeResultWithOtter = async (
     topic: string,
     stats: Record<string, { correct: number, total: number }>
 ): Promise<MentorResponse> => {
-    // Format stats into a readable string for the prompt
+    if (!apiKey) return { analysis: "Chưa có API Key", strengths: [], weaknesses: [], roadmap: [] };
+
     const statsDescription = Object.entries(stats)
         .map(([diff, val]) => {
              const pct = val.total > 0 ? Math.round((val.correct / val.total) * 100) : 0;
@@ -379,50 +313,26 @@ export const analyzeResultWithOtter = async (
         .join('\n');
 
     const prompt = `
-    Đóng vai là "Rái cá nhỏ" (Little Otter) - một gia sư AI giải phẫu học cực kỳ thông minh, hài hước, hay dùng emoji 🦦.
+    Đóng vai là "Rái cá nhỏ" 🦦 - gia sư AI giải phẫu.
+    Học viên vừa làm bài thi chủ đề: "${topic}".
+    DỮ LIỆU: \n${statsDescription}
     
-    Học viên vừa làm bài thi về chủ đề: "${topic}".
+    NHIỆM VỤ:
+    1. Phân tích năng lực.
+    2. Chỉ ra Điểm mạnh/Yếu.
+    3. Lộ trình cải thiện (4 bước cụ thể, kỹ thuật học tập rõ ràng).
     
-    DỮ LIỆU KẾT QUẢ (STATS):
-    ${statsDescription}
-    
-    NHIỆM VỤ CỦA BẠN (Yêu cầu độ chi tiết cao):
-    1. PHÂN TÍCH SÂU (Deep Analysis): 
-       - Dựa vào stats, nhận xét về năng lực hiện tại.
-       - Đưa ra lời nhận xét dí dỏm nhưng thấm thía.
-
-    2. ĐÁNH GIÁ CHI TIẾT:
-       - Điểm mạnh: Các phần làm tốt.
-       - Điểm yếu: Các phần hay sai.
-
-    3. LỘ TRÌNH CẢI THIỆN (Actionable Roadmap - CỰC KỲ QUAN TRỌNG):
-       - Hãy thiết kế 4 bước hành động cụ thể để khắc phục điểm yếu nhất.
-       - KHÔNG ĐƯỢC viết chung chung như "Học lại lý thuyết" hay "Đọc thêm sách".
-       - HÃY VIẾT CÁC KỸ THUẬT CỤ THỂ, ví dụ: 
-         + "Vẽ lại sơ đồ đám rối thần kinh cánh tay 3 lần bằng trí nhớ (Active Recall)."
-         + "So sánh nguyên ủy/bám tận của nhóm cơ gấp và duỗi (Comparative Study)."
-         + "Giải thích cơ chế bệnh sinh của ca lâm sàng X cho người khác nghe (Feynman Technique)."
-         + "Tạo Flashcard Anki cho các nhánh bên động mạch."
-       - Mục "details" phải dài khoảng 2-3 câu, hướng dẫn cách làm chi tiết.
-
-    Output JSON format:
-    {
-      "analysis": "Lời nhận xét chung...",
-      "strengths": ["Điểm mạnh 1", "Điểm mạnh 2"],
-      "weaknesses": ["Điểm yếu 1", "Điểm yếu 2"],
-      "roadmap": [
-         { "step": "Tên phương pháp (VD: Kỹ thuật Vẽ hồi tưởng)", "details": "Hướng dẫn chi tiết cách thực hiện..." }
-      ]
-    }
+    JSON Output: { "analysis": string, "strengths": string[], "weaknesses": string[], "roadmap": [{ "step": string, "details": string }] }
     `;
 
     try {
+        console.log(`Analyzing with model: ${MODEL_MCQ}`);
         const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-            model: "gemini-3-pro-preview",
+            model: MODEL_MCQ,
             contents: { role: 'user', parts: [{ text: prompt }] },
             config: {
                 responseMimeType: "application/json",
-                thinkingConfig: { thinkingBudget: 2048 } // Increased budget for detailed roadmap planning
+                thinkingConfig: { thinkingBudget: 2048 }
             }
         }));
 
@@ -441,44 +351,22 @@ export const analyzeResultWithOtter = async (
 };
 
 export const chatWithOtter = async (history: {role: 'user' | 'model', text: string, image?: string}[], message: string, image?: string): Promise<string> => {
-    // Use Flash for speed in chat
-    const model = "gemini-2.5-flash"; 
-    
-    const systemInstruction = `Bạn là "Rái cá nhỏ" (Little Otter) 🦦 - một trợ lý ảo chuyên về GIẢI PHẪU HỌC (Anatomy).
-    
-    TÍNH CÁCH & PHONG CÁCH TRẢ LỜI:
-    - Vui vẻ, thân thiện, nhưng cực kỳ chuyên nghiệp về kiến thức y khoa.
-    - Dùng emoji (🦦, 🦴, 🧠) hợp lý để tạo cảm giác gần gũi.
-    
-    QUY TẮC ĐỊNH DẠNG VĂN BẢN (QUAN TRỌNG):
-    1. TRÌNH BÀY GỌN GÀNG:
-       - Sử dụng **in đậm** (bold) CHỈ cho các từ khóa chính (thuật ngữ giải phẫu).
-       - HẠN CHẾ DÙNG quá nhiều ký tự # (header) nếu đoạn văn ngắn.
-       - Sử dụng gạch đầu dòng (-) để liệt kê ý.
-       - KHÔNG dùng quá nhiều ký tự đặc biệt gây rối mắt (** không cần thiết thì đừng dùng).
-    
-    2. CẤU TRÚC:
-       - Tách đoạn ngắn, dễ đọc.
-       - Tập trung vào thông tin chính xác, tránh lan man.
-    
-    NHIỆM VỤ:
-    - Giải đáp mọi câu hỏi về cấu trúc giải phẫu, chức năng sinh lý, liên hệ lâm sàng.
-    - Phân tích hình ảnh giải phẫu nếu người dùng gửi.
-    - Từ chối khéo léo các câu hỏi không liên quan đến Y học.
+    if (!apiKey) return "Vui lòng nhập API Key để chat với Rái cá!";
+
+    const systemInstruction = `Bạn là "Rái cá nhỏ" (Little Otter) 🦦 - trợ lý ảo GIẢI PHẪU HỌC.
+    - Vui vẻ, chuyên nghiệp, dùng emoji 🦦 🦴 🧠.
+    - Giải đáp kiến thức giải phẫu, phân tích hình ảnh.
+    - Trình bày Markdown gọn gàng.
     `;
 
-    // Construct Gemini content format
     const contents = history.map(msg => {
         const parts: any[] = [{ text: msg.text }];
         if (msg.image) {
-             // Simple base64 extraction assuming data URL
              try {
                  const base64Data = msg.image.includes('base64,') ? msg.image.split('base64,')[1] : msg.image;
                  const mimeType = msg.image.match(/data:([^;]+);base64,/)?.[1] || 'image/jpeg';
                  parts.push({ inlineData: { mimeType, data: base64Data }});
-             } catch (e) {
-                 console.warn("Could not process history image", e);
-             }
+             } catch (e) { console.warn("History image error", e); }
         }
         return { role: msg.role, parts };
     });
@@ -489,21 +377,20 @@ export const chatWithOtter = async (history: {role: 'user' | 'model', text: stri
             const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
             const mimeType = image.match(/data:([^;]+);base64,/)?.[1] || 'image/jpeg';
             currentParts.push({ inlineData: { mimeType, data: base64Data }});
-        } catch (e) {
-             console.warn("Could not process current image", e);
-        }
+        } catch (e) { console.warn("Current image error", e); }
     }
     contents.push({ role: 'user', parts: currentParts });
 
     try {
+        console.log(`Chatting with model: ${MODEL_CHAT}`);
         const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-            model,
+            model: MODEL_CHAT,
             contents,
             config: { systemInstruction }
         }));
-        return response.text || "Rái cá đang bơi đi đâu mất rồi, không trả lời được... 🦦";
+        return response.text || "Rái cá đang bơi đi đâu mất rồi... 🦦";
     } catch (e) {
         console.error(e);
-        return "Úi! Mạng bị nghẽn rồi, Rái cá không nghe rõ. Bạn hỏi lại nhé? 🦦";
+        return "Úi! Mạng bị nghẽn hoặc lỗi kết nối. Bạn hỏi lại nhé? 🦦";
     }
 };

@@ -115,7 +115,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
       }
   };
 
-  // Core Logic: Mathematical Mapping
+  // --- CORE LOGIC: PARALLEL BATCH PROCESSING ---
   const handleGenerate = async () => {
     if (!pdfFile) {
         setError("Vui lòng tải lên file Flashcard PDF.");
@@ -125,7 +125,6 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
         setError("Vui lòng chọn chương sách.");
         return;
     }
-    // If topic is empty, default to the section name for AI context
     const processingTopic = topic.trim() || selectedSection.name;
 
     setLoading(true);
@@ -136,125 +135,128 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
     setShowMentor(false);
 
     try {
-        // 1. Identify Target Pages based on Selected Section
-        setLoadingText(`Đang truy xuất dữ liệu chương: ${selectedSection.name}`);
-        setLoadingProgress(10);
-
+        setLoadingText(`Đang khởi tạo dữ liệu chương: ${selectedSection.name}`);
+        
+        // 1. Prepare a LARGE Pool of Candidate Pages
         const [startCard, endCard] = selectedSection.range;
         const b = selectedSection.b;
         
-        // Generate random unique card numbers within the range
-        const potentialCards = Array.from({length: endCard - startCard + 1}, (_, i) => startCard + i);
+        // Generate ALL possible card numbers in this range
+        let potentialCards = Array.from({length: endCard - startCard + 1}, (_, i) => startCard + i);
         
-        // Shuffle and pick 'questionCount' cards (or fewer if range is small)
+        // Shuffle the deck thoroughly
         for (let i = potentialCards.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [potentialCards[i], potentialCards[j]] = [potentialCards[j], potentialCards[i]];
         }
-        
-        const selectedCards = potentialCards.slice(0, Math.min(questionCount * 2, potentialCards.length)); // Pick double just in case some fail
 
-        // Convert Card Number (x) to PDF Page (y) using y = 2x + b
-        let targetPageNums = selectedCards.map(x => (2 * x) + b);
-        
-        console.log(`Section: ${selectedSection.name}. Context: ${processingTopic}. Selected Cards: ${selectedCards.join(', ')}. PDF Pages: ${targetPageNums.join(', ')}`);
+        // Convert to PDF Page Numbers (y = 2x + b)
+        let targetPageNums = potentialCards.map(x => (2 * x) + b);
 
-        // 2. Load PDF Document
-        setLoadingText("Đang mở tài liệu...");
+        // 2. Load PDF
         const arrayBuffer = await pdfFile.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const totalPages = pdf.numPages;
-
-        // Filter out pages that are out of bounds
+        
+        // Filter valid pages
         targetPageNums = targetPageNums.filter(p => p <= totalPages && p > 0);
 
-        if (targetPageNums.length === 0) {
-             throw new Error("Lỗi tính toán trang PDF. Vui lòng kiểm tra lại file.");
-        }
+        if (targetPageNums.length === 0) throw new Error("Lỗi tính toán trang PDF.");
 
-        // 3. Extract Images & Generate Questions
+        // 3. Parallel Batch Processing Loop
         const newStations: StationItem[] = [];
-        setLoadingText(`Đang trích xuất hình ảnh từ ${targetPageNums.length} vị trí...`);
-        setLoadingProgress(30);
-        
+        const BATCH_SIZE = 3; // Process 3 pages at once for speed
+        let processedCount = 0;
         let hasQuotaError = false;
 
-        // Process one by one to maintain order and check quota
-        for (let i = 0; i < targetPageNums.length; i++) {
+        // Loop until we have EXACTLY the requested number of stations or run out of pages
+        for (let i = 0; i < targetPageNums.length; i += BATCH_SIZE) {
             if (newStations.length >= questionCount) break;
             if (hasQuotaError) break;
 
-            const pageNum = targetPageNums[i];
+            const batch = targetPageNums.slice(i, i + BATCH_SIZE);
             
-            try {
-                setLoadingText(`Đang phân tích trạm ${newStations.length + 1}... (Trang PDF ${pageNum})`);
-                
-                const page = await pdf.getPage(pageNum);
-                const viewport = page.getViewport({ scale: 1.5 }); // High quality for small details
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-                
-                if (!ctx) continue;
-                
-                await page.render({ canvasContext: ctx, viewport }).promise;
-                const base64 = canvas.toDataURL('image/jpeg', 0.7); 
-
-                // Call AI to generate question with the specific topic context
-                const res = await generateStationQuestionFromImage(base64, processingTopic);
-                
-                if (res.isValid && res.questions && res.questions.length > 0) {
-                    newStations.push({
-                        id: `st-${Date.now()}-${i}`,
-                        imageUri: base64,
-                        questions: res.questions.map((q: any) => ({
-                            ...q, 
-                            id: `q-${Date.now()}-${i}`
-                        }))
-                    });
+            setLoadingText(`Đang quét song song ${batch.length} ảnh... (Đã có ${newStations.length}/${questionCount} trạm)`);
+            
+            // Create array of promises for parallel execution
+            const batchPromises = batch.map(async (pageNum) => {
+                try {
+                    const page = await pdf.getPage(pageNum);
+                    // UPDATED: Increase scale for higher resolution (4.5x) to support zooming
+                    const viewport = page.getViewport({ scale: 4.5 }); 
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
                     
-                    // Update progress
-                    const progress = 30 + Math.round((newStations.length / questionCount) * 70);
-                    setLoadingProgress(Math.min(progress, 99));
-                } else {
-                    console.warn(`Page ${pageNum} rejected by AI (Not anatomical or unclear).`);
+                    if (!ctx) return null;
+                    
+                    await page.render({ canvasContext: ctx, viewport }).promise;
+                    // UPDATED: High quality JPEG
+                    const base64 = canvas.toDataURL('image/jpeg', 0.9); 
+
+                    const res = await generateStationQuestionFromImage(base64, processingTopic);
+                    
+                    if (res.isValid && res.questions && res.questions.length > 0) {
+                        return {
+                            id: `st-${Date.now()}-${pageNum}`,
+                            imageUri: base64,
+                            questions: res.questions.map((q: any, idx: number) => ({
+                                ...q, 
+                                id: `q-${Date.now()}-${pageNum}-${idx}`
+                            }))
+                        } as StationItem;
+                    }
+                    return null;
+                } catch (e: any) {
+                    if (e.message && (e.message.includes("quota") || e.message.includes("429"))) {
+                        hasQuotaError = true;
+                    }
+                    return null;
                 }
-            } catch (e: any) {
-                if (e.message && (e.message.includes("quota") || e.message.includes("429") || e.message.includes("hết hạn mức"))) {
-                    hasQuotaError = true;
-                    console.error("Quota Exceeded during loop");
-                } else {
-                    console.warn(`Error processing page ${pageNum}:`, e);
+            });
+
+            // Wait for all requests in this batch to finish
+            const results = await Promise.all(batchPromises);
+            
+            // Add valid results to main list
+            results.forEach(item => {
+                if (item && newStations.length < questionCount) {
+                    newStations.push(item);
                 }
-            }
+            });
+
+            processedCount += batch.length;
+            const progress = Math.min(Math.round((newStations.length / questionCount) * 100), 95);
+            setLoadingProgress(progress);
         }
-        
+
+        // 4. Finalize
         if (newStations.length > 0) {
              if (hasQuotaError && newStations.length < questionCount) {
-                 setError("Đã đạt giới hạn AI (Quota). Đang hiển thị các trạm đã tạo được.");
+                 setError("Đã đạt giới hạn AI. Đang hiển thị các trạm đã tạo được.");
              }
              
              setLoadingProgress(100);
-             setLoadingText("Hoàn tất! Chuẩn bị vào trạm...");
+             setLoadingText("Hoàn tất! Đang vào trạm...");
              
              setTimeout(() => {
-                setStations(newStations);
+                setStations(newStations); // It will be exactly questionCount or less if pool exhausted
                 setUserAnswers({});
                 setStep(StationStep.RUNNING);
                 setLoading(false);
-             }, 800);
+             }, 500);
         } else {
             if (hasQuotaError) {
-                 throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded). Vui lòng thử lại sau.");
+                 throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded).");
             } else {
-                 throw new Error("Không thể tạo trạm nào từ các trang đã chọn. Hình ảnh có thể không rõ ràng.");
+                 throw new Error("Không tìm thấy hình ảnh giải phẫu nào phù hợp với chủ đề này.");
             }
         }
 
     } catch (err: any) {
         console.error("Station generation error", err);
-        setError(err.message || "Có lỗi xảy ra khi xử lý.");
+        setError(err.message || "Có lỗi xảy ra.");
         setLoading(false);
     }
   };
@@ -304,20 +306,18 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
         <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md transition-all duration-500">
             <div className="w-full max-w-2xl p-8 relative">
                 {/* Title */}
-                <h3 className="text-3xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-emerald-600 mb-16 animate-pulse">
+                <h3 className="text-3xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-emerald-600 mb-16 animate-pulse">
                     RÁI CÁ ĐANG CHẠY TRẠM...
                 </h3>
 
                 {/* THE TRACK */}
-                <div className="relative w-full h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-visible">
+                <div className="relative w-full h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-visible border border-slate-300 dark:border-slate-700">
                     
-                    {/* Progress Fill */}
+                    {/* Progress Fill - CANDY CANE STRIPE */}
                     <div 
-                        className="absolute top-0 left-0 h-full bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full transition-all duration-500 ease-out shadow-[0_0_20px_rgba(20,184,166,0.5)]"
+                        className="absolute top-0 left-0 h-full bg-[repeating-linear-gradient(45deg,#dc2626,#dc2626_10px,#ffffff_10px,#ffffff_20px)] rounded-full transition-all duration-500 ease-out shadow-[0_0_20px_rgba(220,38,38,0.5)]"
                         style={{ width: `${loadingProgress}%` }}
                     >
-                        {/* Shimmer Effect inside bar */}
-                        <div className="absolute inset-0 w-full h-full bg-white/30 animate-[shimmer_1s_infinite]"></div>
                     </div>
 
                     {/* THE RUNNING OTTER */}
@@ -330,15 +330,11 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                             <div className="text-7xl transform -scale-x-100 animate-[bounce_0.4s_infinite] filter drop-shadow-lg">
                                 🦦
                             </div>
+                            <div className="absolute -top-3 left-0 text-2xl rotate-12">🎅</div>
                             
                             {/* Dust/Wind Effect behind */}
                             <div className="absolute bottom-1 right-full mr-2 text-2xl opacity-0 animate-[fade-left_0.6s_infinite]">
-                                💨
-                            </div>
-                            
-                            {/* Sweat Drop */}
-                            <div className="absolute -top-2 left-full text-xl animate-bounce">
-                                💦
+                                ❄️
                             </div>
                         </div>
                         
@@ -350,7 +346,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     
                     {/* Finish Line Flag */}
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 text-2xl">
-                        🏁
+                        🎄
                     </div>
                 </div>
 
@@ -361,7 +357,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     </p>
                     <div className="flex justify-center gap-4 text-sm text-slate-400 italic">
                         <span className="flex items-center gap-1"><Book className="w-3 h-3" /> Gray's Anatomy</span>
-                        <span className="flex items-center gap-1"><Search className="w-3 h-3" /> Smart Map</span>
+                        <span className="flex items-center gap-1"><Search className="w-3 h-3" /> Parallel Scan</span>
                         <span className="flex items-center gap-1"><Eye className="w-3 h-3" /> Vision AI</span>
                     </div>
                 </div>
@@ -385,15 +381,15 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
         <div className="space-y-8">
 
             {/* CARD 1: HEADER */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-teal-600 to-emerald-600 p-8 text-white shadow-xl animate-fade-up" style={{ animationDelay: '0ms' }}>
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-white shadow-xl animate-fade-up" style={{ animationDelay: '0ms' }}>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                 <div className="relative z-10 flex items-center gap-6">
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-inner">
                         <Activity className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-glow-white">Chạy Trạm (Spot Test)</h1>
-                        <p className="text-teal-100 text-lg">Hệ thống sử dụng thuật toán ánh xạ trực tiếp vào file PDF Gray's Anatomy.</p>
+                        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-glow-white">Chạy Trạm (Xmas)</h1>
+                        <p className="text-teal-100 text-lg">Hệ thống sử dụng thuật toán quét song song để tạo trạm siêu tốc.</p>
                     </div>
                 </div>
             </div>
@@ -405,14 +401,14 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     {/* LEFT: UPLOAD SOURCE */}
                     <div>
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Database className="w-5 h-5 text-teal-500" />
+                            <Database className="w-5 h-5 text-emerald-500" />
                             Nguồn dữ liệu gốc (PDF)
                         </h3>
                         
                         <div 
                             onClick={() => fileInputRef.current?.click()}
                             className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group
-                            ${pdfFile ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20' : 'border-slate-300 dark:border-slate-700 hover:border-teal-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            ${pdfFile ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-300 dark:border-slate-700 hover:border-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                         >
                             <input 
                                 type="file" 
@@ -424,11 +420,11 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                             
                             {pdfFile ? (
                                 <div className="flex flex-col items-center gap-2 animate-in zoom-in">
-                                    <div className="w-12 h-12 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center text-teal-600 dark:text-teal-300">
+                                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-800 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-300">
                                         <CheckCircle className="w-6 h-6" />
                                     </div>
                                     <p className="font-bold text-slate-700 dark:text-slate-200 text-sm break-all px-2">{pdfFile.name}</p>
-                                    <span className="text-xs text-teal-600 dark:text-teal-400">Nhấn để thay đổi file</span>
+                                    <span className="text-xs text-emerald-600 dark:text-emerald-400">Nhấn để thay đổi file</span>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
@@ -515,14 +511,14 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
 
             {/* CARD 3: SETTINGS */}
             <div className="relative rounded-3xl bg-gradient-to-br from-midnight-950 to-midnight-900 border border-slate-700 p-8 shadow-2xl animate-fade-up" style={{ animationDelay: '200ms' }}>
-                <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-500 to-transparent opacity-50"></div>
+                <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
                 
                 <div className="grid md:grid-cols-2 gap-12 mb-10">
                     {/* Question Count Slider */}
                     <div className="relative">
                         <div className="flex justify-between mb-4">
                             <label className="text-sm font-bold text-slate-300">Số lượng trạm (1-10)</label>
-                            <span className="text-2xl font-bold text-teal-400">{questionCount}</span>
+                            <span className="text-2xl font-bold text-emerald-400">{questionCount}</span>
                         </div>
                         <div className="relative h-10 flex items-center">
                             <input
@@ -558,11 +554,11 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                {/* Start Button */}
+                {/* Start Button - Christmas Gradient */}
                 <button
                     onClick={handleGenerate}
                     disabled={!selectedSection || !pdfFile}
-                    className="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-5 rounded-2xl shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] transition-all flex items-center justify-center space-x-3 text-lg active:scale-95 relative overflow-hidden group"
+                    className="w-full bg-gradient-to-r from-red-600 to-emerald-600 hover:from-red-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-5 rounded-2xl shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center space-x-3 text-lg active:scale-95 relative overflow-hidden group"
                 >
                     <Play className="w-6 h-6 fill-current" />
                     <span>Bắt đầu thi Chạy Trạm</span>
@@ -621,10 +617,16 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
     const [isPaused, setIsPaused] = useState(false);
     const [zoomLevel, setZoomLevel] = useState(1);
     
-    // Reset timer & zoom when station changes
+    // New Panning State
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+    // Reset timer, zoom, and pan when station changes
     useEffect(() => {
         setTimeLeft(timePerStation);
         setZoomLevel(1);
+        setPan({ x: 0, y: 0 });
     }, [currentIndex, timePerStation]);
 
     useEffect(() => {
@@ -645,9 +647,52 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
         }
     };
 
-    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.5, 3));
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.5, 1));
-    const handleResetZoom = () => setZoomLevel(1);
+    // Increase max zoom level for clearer details
+    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.5, 8)); 
+    
+    const handleZoomOut = () => {
+        setZoomLevel(prev => {
+            const newZoom = Math.max(prev - 0.5, 1);
+            if (newZoom === 1) setPan({ x: 0, y: 0 }); // Reset pan if zoomed out completely
+            return newZoom;
+        });
+    };
+    
+    const handleResetZoom = () => {
+        setZoomLevel(1);
+        setPan({ x: 0, y: 0 });
+    };
+
+    // Mouse Handlers for Panning
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (zoomLevel > 1) {
+            setIsDragging(true);
+            setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (isDragging && zoomLevel > 1) {
+            e.preventDefault();
+            setPan({
+                x: e.clientX - dragStart.x,
+                y: e.clientY - dragStart.y
+            });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    // Quick zoom on double click
+    const handleDoubleClick = () => {
+        if (zoomLevel === 1) {
+            setZoomLevel(2.5);
+        } else {
+            handleZoomIn();
+        }
+    };
 
     const handleAnswerChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const currentStationId = stations[currentIndex].id;
@@ -670,14 +715,14 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
             {/* Top Bar: Timer & Progress */}
             <div className="h-2 bg-slate-800 w-full">
                 <div 
-                    className="h-full bg-teal-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(20,184,166,0.8)]"
+                    className="h-full bg-emerald-500 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(16,185,129,0.8)]"
                     style={{ width: `${100 - progress}%` }}
                 ></div>
             </div>
             
             <div className="flex items-center justify-between px-4 md:px-8 py-4 bg-slate-900 border-b border-slate-800">
                 <div className="flex items-center gap-4">
-                    <div className="bg-teal-500/20 text-teal-400 px-3 py-1 rounded-lg font-bold border border-teal-500/30 text-sm md:text-base">
+                    <div className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-lg font-bold border border-emerald-500/30 text-sm md:text-base">
                         TRẠM {currentIndex + 1}
                     </div>
                     <span className="text-slate-400 text-sm">/ {stations.length}</span>
@@ -698,8 +743,8 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
             {/* Main Content: Split View (Image Left / Input Right) */}
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
                 
-                {/* Image Area - Interactive Zoom - LEFT SIDE */}
-                <div className="flex-1 bg-black/80 relative overflow-hidden flex items-center justify-center group select-none order-1">
+                {/* Image Area - Interactive Zoom & Pan - LEFT SIDE */}
+                <div className="flex-1 bg-black/80 relative overflow-hidden flex items-center justify-center group select-none order-1 touch-none">
                     {/* Zoom Toolbar */}
                     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-30 flex gap-2 bg-slate-800/80 backdrop-blur-md p-1.5 rounded-xl border border-slate-700 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={handleZoomOut} className="p-2 hover:bg-slate-700 rounded-lg text-white"><ZoomOut className="w-5 h-5" /></button>
@@ -710,17 +755,25 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
                     </div>
 
                     <div 
-                        className="w-full h-full flex items-center justify-center overflow-auto p-4"
-                        style={{ cursor: zoomLevel > 1 ? 'grab' : 'default' }}
+                        className="w-full h-full flex items-center justify-center overflow-hidden p-4"
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onDoubleClick={handleDoubleClick}
+                        style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in' }}
                     >
                          <div 
-                            style={{ transform: `scale(${zoomLevel})`, transition: 'transform 0.2s ease-out' }}
-                            className="origin-center w-full h-full flex items-center justify-center"
+                            style={{ 
+                                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`, 
+                                transition: isDragging ? 'none' : 'transform 0.2s ease-out' 
+                            }}
+                            className="origin-center flex items-center justify-center"
                          >
                              <img 
                                 src={currentStation.imageUri} 
                                 alt="Anatomy Spot" 
-                                className="max-h-full max-w-full object-contain shadow-2xl rounded-lg"
+                                className="max-h-[85vh] max-w-full object-contain shadow-2xl rounded-lg pointer-events-none select-none"
                                 draggable={false}
                              />
                          </div>
@@ -730,7 +783,7 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
                 {/* Question Area - RIGHT SIDE */}
                 <div className="md:w-[420px] w-full bg-slate-900 border-l border-slate-800 p-6 flex flex-col justify-between shadow-2xl relative z-10 order-2">
                      <div className="space-y-6">
-                         <div className="flex items-center gap-2 text-teal-400 font-bold uppercase tracking-wider text-xs">
+                         <div className="flex items-center gap-2 text-emerald-400 font-bold uppercase tracking-wider text-xs">
                              <Crosshair className="w-4 h-4" /> Câu hỏi định danh
                          </div>
                          
@@ -739,7 +792,7 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
                          </h2>
                          
                          <div className="p-3 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-400 italic text-xs">
-                             Lưu ý: Quan sát kỹ hình ảnh bên trái. Có thể phóng to (Zoom) để xem rõ chi tiết.
+                             Lưu ý: Quan sát kỹ hình ảnh bên trái. Có thể phóng to và kéo chuột để xem rõ chi tiết.
                          </div>
                      </div>
 
@@ -750,13 +803,13 @@ const StationRunner: React.FC<StationRunnerProps> = ({ stations, timePerStation,
                                 value={currentAnswer}
                                 onChange={handleAnswerChange}
                                 placeholder="Nhập tên cấu trúc giải phẫu..."
-                                className="w-full h-32 bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none text-lg placeholder-slate-600"
+                                className="w-full h-32 bg-slate-800 border border-slate-700 rounded-xl p-4 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none resize-none text-lg placeholder-slate-600"
                              />
                          </div>
 
                          <button 
                             onClick={handleNext}
-                            className="w-full bg-teal-600 hover:bg-teal-500 text-white px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-teal-500/30 transition-all text-lg mt-4"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-4 rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg hover:shadow-emerald-500/30 transition-all text-lg mt-4"
                          >
                             <span>{currentIndex === stations.length - 1 ? "Nộp bài" : "Tiếp theo"}</span>
                             <ArrowRight className="w-6 h-6" />
@@ -816,7 +869,7 @@ const StationSummary: React.FC<StationSummaryProps> = ({
                  <div className="relative w-32 h-32 flex-shrink-0 group">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 70 70">
                         <circle cx="35" cy="35" r={radius} fill="none" stroke="currentColor" className="text-slate-100 dark:text-slate-800" strokeWidth="6" />
-                        <circle cx="35" cy="35" r={radius} fill="none" stroke="#14b8a6" strokeWidth="6" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+                        <circle cx="35" cy="35" r={radius} fill="none" stroke="#10b981" strokeWidth="6" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
                         <foreignObject x={pigX - 7} y={pigY - 7} width="14" height="14">
                             <div className="w-full h-full rounded-full bg-pink-100 border border-pink-300 flex items-center justify-center shadow-sm rotate-90">
                                 <span className="text-[9px]">🐷</span>
@@ -824,13 +877,13 @@ const StationSummary: React.FC<StationSummaryProps> = ({
                         </foreignObject>
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center flex-col">
-                            <span className="text-3xl font-black text-teal-600 dark:text-teal-400">{scorePercentage}%</span>
+                            <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">{scorePercentage}%</span>
                         </div>
                 </div>
                 
                 <div className="text-center md:text-left flex-1">
                     <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Kết quả Chạy Trạm</h2>
-                    <p className="text-slate-500 dark:text-slate-400 mb-4">Heo con đã chấm bài xong! Bạn làm đúng <strong className="text-teal-600 dark:text-teal-400">{correctCount}/{stations.length}</strong> trạm.</p>
+                    <p className="text-slate-500 dark:text-slate-400 mb-4">Heo con đã chấm bài xong! Bạn làm đúng <strong className="text-emerald-600 dark:text-emerald-400">{correctCount}/{stations.length}</strong> trạm.</p>
                     
                     <div className="flex gap-3 justify-center md:justify-start">
                         <button 
