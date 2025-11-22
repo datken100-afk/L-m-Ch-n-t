@@ -140,13 +140,27 @@ export const generateMCQQuestions = async (
   const ai = getAI();
 
   let systemInstruction = `
-    Bạn là giáo sư Y khoa. Tạo ${count} câu trắc nghiệm giải phẫu về chủ đề "${topic}".
+    Bạn là Giáo sư GIẢI PHẪU ĐẠI THỂ (Gross Anatomy) hàng đầu tại Đại học Y Dược.
+    Nhiệm vụ: Tạo ${count} câu trắc nghiệm giải phẫu về chủ đề "${topic}".
     Độ khó: ${difficulties.join(', ')}.
-    Yêu cầu: 
-    1. Trả về định dạng JSON thuần túy.
-    2. 4 lựa chọn, 1 đáp án đúng.
-    3. Giải thích ngắn gọn, súc tích.
-    4. Tập trung hoàn toàn vào nội dung tài liệu được cung cấp dưới đây liên quan đến "${topic}".
+
+    QUY TẮC TỐI THƯỢNG (STRICT RULES):
+    1. **TRỌNG TÂM LÀ GIẢI PHẪU ĐẠI THỂ**:
+       - Chỉ tập trung vào cấu trúc nhìn thấy bằng mắt thường: Cơ, Xương, Khớp, Mạch máu, Thần kinh, Tạng, Liên quan giải phẫu.
+       - Hỏi về: Nguyên ủy, Bám tận, Đường đi, Chi phối, Cấp máu, Vị trí tương đối.
+    
+    2. **LOẠI BỎ MÔ HỌC/VI THỂ**:
+       - TUYỆT ĐỐI KHÔNG hỏi về cấu trúc tế bào, mô học, kính hiển vi (VD: biểu mô lát tầng, tiểu cầu thận, tế bào gan...) trừ khi trong tài liệu CHỈ CÓ thông tin đó.
+       - Nếu tài liệu chứa cả Đại thể và Vi thể, hãy LỌC BỎ Vi thể và chỉ lấy Đại thể.
+
+    3. **BÁM SÁT TÀI LIỆU**:
+       - Chỉ sử dụng thông tin từ văn bản được cung cấp dưới đây.
+       - Nếu tài liệu không có thông tin về "${topic}", hãy trả lời trung thực hoặc tạo câu hỏi từ phần có liên quan nhất trong tài liệu đó.
+
+    4. **ĐỊNH DẠNG JSON**:
+       - Trả về định dạng JSON thuần túy.
+       - 4 lựa chọn, 1 đáp án đúng.
+       - Giải thích ngắn gọn, súc tích, tập trung vào tư duy giải phẫu.
   `;
 
   const schema: Schema = {
@@ -198,7 +212,7 @@ export const generateMCQQuestions = async (
   addContentParts(files.clinical, "LÂM SÀNG", LIMIT_CLINICAL_CHARS);
   addContentParts(files.sample, "ĐỀ MẪU", LIMIT_SAMPLE_CHARS);
 
-  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON.` });
+  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON về GIẢI PHẪU ĐẠI THỂ.` });
 
   return retryGeminiCall(async () => {
       const response = await ai.models.generateContent({
@@ -211,7 +225,7 @@ export const generateMCQQuestions = async (
               systemInstruction: systemInstruction,
               responseMimeType: "application/json",
               responseSchema: schema,
-              temperature: 0.7
+              temperature: 0.5 // Lower temperature for stricter adherence to facts
           }
       });
 
