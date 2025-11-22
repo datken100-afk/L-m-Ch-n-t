@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle, Lock, CheckCircle, Star } from 'lucide-react';
+import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle, Lock, CheckCircle, Star, Heart, Copy, Coffee, Ticket } from 'lucide-react';
 import { UserProfile } from '../types';
 import { OtterChat } from './OtterChat';
 import { ThemeType } from '../App';
@@ -17,6 +17,8 @@ interface LayoutProps {
   showFeedback?: boolean;
   theme: ThemeType;
   setTheme: (theme: ThemeType) => void;
+  showSwiftGift?: boolean;
+  onCloseSwiftGift?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
@@ -28,7 +30,9 @@ export const Layout: React.FC<LayoutProps> = ({
   toggleDarkMode,
   showFeedback = false,
   theme,
-  setTheme
+  setTheme,
+  showSwiftGift = false,
+  onCloseSwiftGift
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
@@ -47,6 +51,10 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Donate Modal State
+  const [showDonateModal, setShowDonateModal] = useState(false);
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   // Animation Refs
   const fallingContainerRef = useRef<HTMLDivElement>(null);
@@ -99,6 +107,12 @@ export const Layout: React.FC<LayoutProps> = ({
       setApiKeySaved(false);
   };
 
+  const handleCopyAccount = () => {
+      navigator.clipboard.writeText("0766377925");
+      setCopiedAccount(true);
+      setTimeout(() => setCopiedAccount(false), 2000);
+  };
+
   const handleThemeChange = (newTheme: ThemeType) => {
       if (newTheme === theme) {
           setIsThemeDropdownOpen(false);
@@ -139,7 +153,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const themeOptions: {id: ThemeType, name: string, icon: string, color: string, bg: string}[] = [
       { id: 'default', name: 'Otter', icon: '🦦', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
       { id: 'xmas', name: 'Noel', icon: '🎄', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
-      { id: 'swift', name: 'Eras', icon: '🐍', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+      { id: 'swift', name: 'Eras VIP', icon: '🐍', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' },
       { id: 'blackpink', name: 'Blink', icon: '🖤', color: 'text-pink-500', bg: 'bg-slate-900' },
       { id: 'aespa', name: 'MY', icon: '👽', color: 'text-indigo-400', bg: 'bg-slate-900' },
       { id: 'rosie', name: 'Rosie', icon: '🌹', color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/20' },
@@ -230,6 +244,9 @@ export const Layout: React.FC<LayoutProps> = ({
        } else if (theme === 'showgirl') {
            item.style.filter = 'drop-shadow(0 0 8px rgba(234, 179, 8, 0.6))'; // Gold glow
            item.style.textShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
+       } else if (theme === 'swift') {
+           item.style.filter = 'drop-shadow(0 0 8px rgba(168, 85, 247, 0.6))'; // Purple glow
+           item.style.textShadow = '0 0 10px rgba(168, 85, 247, 0.5)';
        } else {
            item.style.textShadow = '0 0 5px rgba(255,255,255,0.5), 0 0 2px rgba(0,0,0,0.1)';
        }
@@ -345,12 +362,13 @@ export const Layout: React.FC<LayoutProps> = ({
               };
           case 'swift':
               return {
-                  color: 'rgba(236, 72, 153, 0.6)',
-                  gradient: 'from-pink-400 via-purple-400 to-indigo-400',
+                  color: 'rgba(168, 85, 247, 0.9)',
+                  // VIP Gradient: Midnight Blue -> Indigo -> Pink (Bejeweled style)
+                  gradient: 'from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_60px_rgba(168,85,247,0.4)]',
                   icon: '🐍',
-                  subIcon: '🧣',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600',
-                  badgeBg: 'bg-white text-purple-600 font-bold border border-purple-200'
+                  subIcon: '✨',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]',
+                  badgeBg: 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-bold border border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.6)]'
               };
           case 'blackpink':
               return {
@@ -414,7 +432,7 @@ export const Layout: React.FC<LayoutProps> = ({
   // Easter Egg Content Map
   const getEasterEggContent = () => {
       if (theme === 'xmas') return { text: "IT'S TIMEEEEE!", icon: '🎄', img: "https://i.scdn.co/image/ab67616d0000b2734246e3158421f5abb75abc4f", bg: 'bg-red-100', border: 'border-red-600 text-red-600' };
-      if (theme === 'swift') return { text: "ARE YOU READY?", icon: '🐍', img: "https://em-content.zobj.net/source/microsoft-teams/337/snake_1f40d.png", bg: 'bg-green-100', border: 'border-slate-800 text-slate-800' };
+      if (theme === 'swift') return { text: "ARE YOU READY?", icon: '🐍', img: "https://em-content.zobj.net/source/microsoft-teams/337/snake_1f40d.png", bg: 'bg-purple-100', border: 'border-indigo-800 text-indigo-800' };
       if (theme === 'blackpink') return { text: "BLACKPINK!", icon: '🔨', img: null, bg: 'bg-slate-900', border: 'border-pink-500 text-pink-500' };
       if (theme === 'aespa') return { text: "SUPERNOVA!", icon: '🪐', img: null, bg: 'bg-slate-900', border: 'border-purple-500 text-purple-500' };
       if (theme === 'rosie') return { text: "APT. APT.!", icon: '⚡', img: null, bg: 'bg-rose-950', border: 'border-rose-500 text-rose-500' };
@@ -432,23 +450,46 @@ export const Layout: React.FC<LayoutProps> = ({
   const qrContent = `${user.studentId} MUA GIAO DIEN SHOWGIRL`;
   const qrUrl = `https://img.vietqr.io/image/MB-0766377925-compact.png?amount=${qrAmount}&addInfo=${encodeURIComponent(qrContent)}&accountName=LAM%20CHAN%20DAT`;
 
+  // General Donate QR (No specific amount/content forced)
+  const donateQrUrl = `https://img.vietqr.io/image/MB-0766377925-compact.png?accountName=LAM%20CHAN%20DAT`;
+
   return (
-    <div className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative ${theme === 'showgirl' ? 'bg-showgirl-depth' : ''}`}>
+    <div className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative 
+        ${theme === 'showgirl' ? 'bg-showgirl-depth' : ''}
+        ${theme === 'swift' ? 'bg-[#1a1a2e] dark:bg-[#0f0f1a]' : ''}
+    `}>
       
-      {/* SHOWGIRL VIP BACKGROUND FX */}
+      {/* THEME SPECIFIC BACKGROUND FX */}
       {theme === 'showgirl' && (
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-            {/* Left Spotlight */}
             <div className="spotlight-beam left-1/4 -ml-12 animate-spotlight"></div>
-            {/* Right Spotlight */}
             <div className="spotlight-beam right-1/4 -mr-12 animate-spotlight" style={{ animationDelay: '-2s' }}></div>
-            
-            {/* Stage Curtain Overlay */}
             <div className="absolute inset-0 stage-curtain mix-blend-overlay"></div>
-            
-            {/* Ambient Glow */}
             <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-teal-900/20 to-transparent"></div>
         </div>
+      )}
+
+      {/* SWIFT VIP ATMOSPHERE (Lavender Haze + Midnight Rain) */}
+      {theme === 'swift' && (
+         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            {/* Drifting Clouds/Fog */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/foggy-birds.png')] opacity-20 animate-[pulse_10s_infinite] mix-blend-soft-light"></div>
+            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-to-br from-purple-900/10 via-transparent to-indigo-900/10 animate-[spin_60s_linear_infinite]"></div>
+            {/* Floating Particles (Stars/Glitter) */}
+            {[...Array(20)].map((_, i) => (
+                <div 
+                    key={i} 
+                    className="absolute rounded-full bg-white blur-[1px] opacity-30 animate-pulse shadow-[0_0_5px_white]"
+                    style={{
+                        top: `${Math.random() * 100}%`,
+                        left: `${Math.random() * 100}%`,
+                        width: `${Math.random() * 3 + 1}px`,
+                        height: `${Math.random() * 3 + 1}px`,
+                        animationDuration: `${Math.random() * 3 + 2}s`
+                    }}
+                ></div>
+            ))}
+         </div>
       )}
 
       {/* TRANSITION OVERLAY */}
@@ -456,6 +497,140 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* FALLING ITEMS OVERLAY (Only if NOT Default) */}
       {theme !== 'default' && <div ref={fallingContainerRef} className="xmas-container"></div>}
+
+      {/* SWIFT GIFT MODAL */}
+      {showSwiftGift && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-700">
+              <div className="relative max-w-lg w-full mx-4 animate-in zoom-in-90 slide-in-from-bottom-10 duration-700">
+                   {/* Confetti Burst Effect (Visual only) */}
+                   <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-500/30 rounded-full blur-3xl animate-pulse"></div>
+                   <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-pink-500/30 rounded-full blur-3xl animate-pulse"></div>
+
+                   {/* Ticket Container */}
+                   <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1 rounded-[2rem] shadow-[0_0_60px_rgba(168,85,247,0.6)] transform rotate-1 hover:rotate-0 transition-transform duration-500">
+                       <div className="bg-white dark:bg-[#1a1a2e] rounded-[1.9rem] p-8 relative overflow-hidden border-2 border-white/20 flex flex-col items-center text-center">
+                           
+                           {/* Ticket Stub Line */}
+                           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-10 bg-black/80 rounded-r-full border-r border-white/20"></div>
+                           <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-10 bg-black/80 rounded-l-full border-l border-white/20"></div>
+                           <div className="absolute left-6 right-6 top-1/2 border-t-2 border-dashed border-white/20 pointer-events-none opacity-50"></div>
+
+                           {/* Content */}
+                           <div className="mb-8 relative z-10">
+                               <div className="w-24 h-24 mx-auto bg-gradient-to-br from-indigo-400 to-purple-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white dark:border-purple-200 mb-4">
+                                   <span className="text-5xl animate-bounce">🐍</span>
+                               </div>
+                               <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-300 dark:via-purple-300 dark:to-pink-300 mb-1 uppercase tracking-tighter drop-shadow-md">
+                                   THE ERAS TOUR
+                               </h2>
+                               <p className="font-mono text-sm text-slate-500 dark:text-slate-300 tracking-[0.3em] uppercase">
+                                   (Otter's Version)
+                               </p>
+                           </div>
+
+                           <div className="bg-slate-50/80 dark:bg-white/5 p-6 rounded-xl border border-slate-100 dark:border-white/10 mb-8 relative z-10 backdrop-blur-sm w-full shadow-inner">
+                               <div className="flex justify-between items-center mb-3 pb-3 border-b border-dashed border-slate-300 dark:border-white/20">
+                                   <div className="text-left">
+                                       <p className="text-xs text-slate-400 uppercase font-bold">ADMIT</p>
+                                       <p className="text-lg font-black text-slate-800 dark:text-white">ONE</p>
+                                   </div>
+                                   <div className="text-right">
+                                       <p className="text-xs text-slate-400 uppercase font-bold">SECTION</p>
+                                       <p className="text-lg font-black text-purple-500">VIP</p>
+                                   </div>
+                               </div>
+                               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                   Bạn đã nhận được <strong>VIP Package</strong> độc quyền! Tận hưởng giao diện mới với hiệu ứng đặc biệt và năng lượng từ Taylor Swift.
+                               </p>
+                           </div>
+
+                           <button
+                               onClick={onCloseSwiftGift}
+                               className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-bold text-lg shadow-lg shadow-purple-500/40 transition-all hover:scale-[1.02] active:scale-95 relative z-10 flex items-center justify-center gap-2 hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]"
+                           >
+                               <Ticket className="w-5 h-5" />
+                               <span>Nhận vé & Vào học</span>
+                           </button>
+                           
+                           {/* Background texture */}
+                           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 pointer-events-none mix-blend-overlay"></div>
+                       </div>
+                   </div>
+              </div>
+          </div>
+      )}
+
+      {/* DONATE MODAL */}
+      {showDonateModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-300 p-4">
+            <div className={`relative bg-white dark:bg-slate-900 rounded-[2rem] p-6 max-w-[360px] w-full shadow-2xl animate-in zoom-in-95 overflow-hidden border-2 ${
+                theme === 'showgirl' ? 'border-yellow-500 shadow-[0_0_40px_rgba(234,179,8,0.4)]' :
+                theme === 'swift' ? 'border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.4)]' :
+                theme === 'xmas' ? 'border-red-500 shadow-[0_0_40px_rgba(220,38,38,0.3)]' :
+                theme === 'blackpink' ? 'border-pink-500 shadow-[0_0_40px_rgba(236,72,153,0.4)]' :
+                theme === 'aespa' ? 'border-indigo-500 shadow-[0_0_40px_rgba(99,102,241,0.4)]' :
+                'border-slate-200 dark:border-slate-700'
+            }`}>
+                {/* Background Gradients based on Theme */}
+                <div className={`absolute top-0 left-0 w-full h-24 bg-gradient-to-b ${styles.gradient} opacity-20`}></div>
+                
+                <div className="relative z-10 text-center mb-4">
+                    {/* Animated Icon */}
+                    <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center shadow-xl border-4 border-white dark:border-slate-800 bg-gradient-to-br ${styles.gradient}`}>
+                        <span className="text-3xl animate-[bounce_2s_infinite] filter drop-shadow-md">
+                            {theme === 'xmas' ? '🎅' : theme === 'showgirl' ? '💃' : theme === 'swift' ? '🐍' : '🦦'}
+                        </span>
+                    </div>
+
+                    <h2 className={`text-2xl font-black mb-2 tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400' : 'text-slate-800 dark:text-white'}`}>
+                        Tiếp sức Rái Cá
+                    </h2>
+
+                    <div className="bg-slate-50/80 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-100 dark:border-slate-700 backdrop-blur-sm">
+                        <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed italic font-medium">
+                            "Ủng hộ để Rái Cá có thêm ly cà phê ☕ duy trì server nhé! Cảm ơn bạn! ❤️"
+                        </p>
+                    </div>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center bg-white p-4 rounded-2xl border border-slate-100 shadow-lg mb-4 transform transition-transform hover:scale-[1.02]">
+                     <img
+                         src={donateQrUrl}
+                         alt="Donate QR"
+                         className="w-40 h-40 object-contain mb-3 rounded-lg"
+                     />
+                     <div
+                        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl cursor-pointer transition-all border-2 group
+                            ${copiedAccount
+                                ? 'bg-green-50 border-green-200'
+                                : 'bg-slate-50 hover:bg-slate-100 border-slate-100 hover:border-blue-200'
+                            }
+                        `}
+                        onClick={handleCopyAccount}
+                        title="Sao chép số tài khoản"
+                     >
+                         <div className="text-left flex-1 min-w-0">
+                             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">MB Bank</p>
+                             <p className={`font-mono font-black text-lg tracking-wide transition-colors truncate ${copiedAccount ? 'text-green-600' : 'text-slate-800 group-hover:text-blue-600'}`}>
+                                0766377925
+                             </p>
+                             <p className="text-[9px] font-bold text-slate-400 uppercase truncate">LAM CHAN DAT</p>
+                         </div>
+                         <div className={`w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all shrink-0 ${copiedAccount ? 'bg-green-500 text-white' : 'bg-white text-slate-400 group-hover:text-blue-500 group-hover:scale-110'}`}>
+                             {copiedAccount ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                         </div>
+                     </div>
+                </div>
+
+                <button
+                    onClick={() => setShowDonateModal(false)}
+                    className={`w-full py-3 rounded-xl font-bold text-base text-white shadow-xl transition-all hover:-translate-y-1 active:scale-95 bg-gradient-to-r ${styles.gradient}`}
+                >
+                    Đóng
+                </button>
+            </div>
+        </div>
+      )}
 
       {/* PAYMENT MODAL FOR SHOWGIRL */}
       {showPaymentModal && (
@@ -647,8 +822,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
 
-      {/* ... Xmas Popup ... */}
-      {theme === 'xmas' && showXmasPopup && (
+      {/* ... Xmas Popup (Only show if not Swift Gift) ... */}
+      {theme === 'xmas' && showXmasPopup && !showSwiftGift && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(220,38,38,0.5)] overflow-hidden relative animate-in zoom-in-50 slide-in-from-bottom-[20%] duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group transition-all">
                 <div className={`absolute top-0 inset-x-0 h-36 bg-gradient-to-b ${giftOpened ? 'from-amber-400 via-amber-500' : 'from-red-600 via-red-500'} to-transparent z-0 transition-colors duration-700`}></div>
@@ -775,10 +950,32 @@ export const Layout: React.FC<LayoutProps> = ({
                 </div>
             )}
 
+            {/* Swift: Midnight/Lavender Effects in Focus Mode */}
+            {theme === 'swift' && (
+                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-indigo-900/50 via-purple-900/50 to-black/50"></div>
+                     {[...Array(15)].map((_, i) => (
+                        <div 
+                            key={i}
+                            className="absolute animate-pulse bg-white rounded-full blur-[1px]"
+                            style={{
+                                top: `${Math.random() * 100}%`,
+                                left: `${Math.random() * 100}%`,
+                                width: `${Math.random() * 4}px`,
+                                height: `${Math.random() * 4}px`,
+                                animationDuration: `${Math.random() * 3 + 1}s`,
+                            }}
+                        ></div>
+                    ))}
+                 </div>
+            )}
+
             <div className={`relative transform transition-transform hover:scale-110 duration-300 ${theme === 'showgirl' ? 'animate-[bounce_3s_infinite]' : 'animate-bounce'}`}>
                 <div className={`w-40 h-40 rounded-[2rem] flex items-center justify-center shadow-2xl border-4 relative 
                     ${theme === 'showgirl' 
                         ? 'bg-gradient-to-br from-teal-900 to-orange-900 border-yellow-500 shadow-[0_0_60px_rgba(234,179,8,0.6)]' 
+                        : theme === 'swift'
+                            ? 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 border-white/30 shadow-[0_0_60px_rgba(168,85,247,0.8)]'
                         : `bg-gradient-to-br ${styles.gradient} border-white/20`
                     }`}
                 >
@@ -792,15 +989,15 @@ export const Layout: React.FC<LayoutProps> = ({
                     )}
                 </div>
                 {/* Glow effect */}
-                <div className={`absolute inset-0 blur-3xl -z-10 opacity-50 ${theme === 'showgirl' ? 'bg-yellow-500' : 'bg-white'}`}></div>
+                <div className={`absolute inset-0 blur-3xl -z-10 opacity-50 ${theme === 'showgirl' ? 'bg-yellow-500' : theme === 'swift' ? 'bg-purple-500' : 'bg-white'}`}></div>
             </div>
             
-            <h1 className={`mt-8 text-5xl font-black text-center tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : 'text-white drop-shadow-lg'}`}>
+            <h1 className={`mt-8 text-5xl font-black text-center tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : 'text-white drop-shadow-lg'}`}>
                 AnatomyOtter
             </h1>
             <p className={`mt-2 font-mono text-lg tracking-widest uppercase ${theme === 'showgirl' ? 'text-yellow-400/80 text-glow-gold' : 'text-white/60'}`}>
                 {theme === 'xmas' ? "Jingle Bells Edition" :
-                 theme === 'swift' ? "The Eras Tour" :
+                 theme === 'swift' ? "The Eras Tour VIP" :
                  theme === 'blackpink' ? "BLACKPINK IN YOUR AREA" :
                  theme === 'aespa' ? "SYNK DIVE INTO KWANGYA" :
                  theme === 'rosie' ? "NUMBER ONE GIRL" :
@@ -815,7 +1012,7 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
       
       {/* HEADER */}
-      <header className={`${theme === 'showgirl' ? 'bg-slate-900/80 backdrop-blur-md border-orange-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} border-b sticky top-0 z-40 transition-all duration-300`}>
+      <header className={`${theme === 'showgirl' ? 'bg-slate-900/80 backdrop-blur-md border-orange-900/30' : theme === 'swift' ? 'bg-[#1a1a2e]/80 backdrop-blur-md border-purple-500/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} border-b sticky top-0 z-40 transition-all duration-300`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div 
             className="flex items-center space-x-2 group cursor-pointer select-none transition-transform active:scale-95"
@@ -839,7 +1036,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             style={theme === 'showgirl' ? { WebkitTextFillColor: '#ffffff' } : undefined}
                         >
                             {theme === 'xmas' ? 'Xmas Edition' 
-                             : theme === 'swift' ? "Taylor's Version" 
+                             : theme === 'swift' ? "Eras VIP" 
                              : theme === 'blackpink' ? "Born Pink" 
                              : theme === 'aespa' ? "MY WORLD" 
                              : theme === 'rosie' ? "number one girl" 
@@ -860,6 +1057,16 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
           
           <div className="flex items-center gap-4">
+            {/* Donate Button */}
+            <button 
+                onClick={() => setShowDonateModal(true)}
+                className={`liquid-icon relative rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none transition-colors ${theme === 'showgirl' ? 'bg-slate-800 text-rose-400 border-rose-900/50' : 'text-rose-500 dark:text-rose-400 bg-slate-100 dark:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-300'}`}
+                style={{ '--glow-color': 'rgba(244, 63, 94, 0.5)' } as React.CSSProperties}
+                title="Ủng hộ Rái Cá"
+            >
+                <Heart className="w-5 h-5" />
+            </button>
+
             {/* Theme Switcher */}
             <div className="relative" ref={themeDropdownRef}>
                 <button 
@@ -878,6 +1085,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             <div className="grid grid-cols-2 gap-2">
                                 {themeOptions.map((opt) => {
                                     const isShowgirl = opt.id === 'showgirl';
+                                    const isSwift = opt.id === 'swift';
                                     const isSelected = theme === opt.id;
                                     const isLocked = isShowgirl && !user.isVipShowgirl;
 
@@ -890,6 +1098,8 @@ export const Layout: React.FC<LayoutProps> = ({
                                                     ? `border-current ${opt.color} ${opt.bg} ring-1 ring-current/20` 
                                                     : isShowgirl
                                                         ? 'border-orange-400 dark:border-orange-500 bg-gradient-to-br from-orange-50 to-teal-50 dark:from-slate-800 dark:to-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)] ring-2 ring-orange-400/30 scale-[1.02]'
+                                                        : isSwift
+                                                            ? 'border-purple-400 dark:border-purple-600 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 text-purple-600 dark:text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
                                                         : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
                                             } ${isLocked ? 'opacity-80 grayscale-[0.3]' : ''}`}
                                         >

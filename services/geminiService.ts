@@ -315,16 +315,30 @@ export const chatWithOtter = async (history: any[], newMessage: string, image?: 
 export const analyzeResultWithOtter = async (topic: string, stats: any): Promise<MentorResponse> => {
     const ai = getAI();
     
+    // UPGRADED SYSTEM INSTRUCTION FOR DEEP ANALYSIS
     const systemInstruction = `
-        Bạn là Rái Cá Mentor. Phân tích kết quả thi giải phẫu của sinh viên.
-        Phong cách: Vui vẻ, động viên, nhưng chuyên môn cao. Dùng emoji 🦦.
-        Output JSON.
+        Bạn là Rái Cá Mentor - một Giáo sư Giải phẫu học hàng đầu, rất nghiêm khắc về chuyên môn nhưng cũng vui tính (dùng emoji 🦦, 🧠, 🦴).
+        
+        Nhiệm vụ: Phân tích kết quả bài thi của sinh viên y khoa một cách chuyên sâu (Deep Dive Analysis).
+        
+        Dữ liệu đầu vào:
+        - Chủ đề: ${topic}
+        - Số liệu: ${JSON.stringify(stats)} (Số câu đúng/tổng theo từng mức độ khó).
+
+        Yêu cầu output (JSON):
+        1. "analysis": Một đoạn văn ngắn (3-4 câu) nhận xét tổng quan. Hãy so sánh khả năng ghi nhớ (Lý thuyết) với khả năng vận dụng (Lâm sàng). Nếu làm sai câu lâm sàng, hãy nhắc nhở về tầm quan trọng của việc ứng dụng. Nếu sai câu cơ bản, hãy nhắc học lại giải phẫu đại thể.
+        2. "strengths": Liệt kê 2-3 điểm mạnh cụ thể dựa trên số liệu (VD: "Tư duy lâm sàng sắc bén", "Nắm vững chi tiết giải phẫu học").
+        3. "weaknesses": Liệt kê 2-3 điểm yếu chí mạng cần khắc phục ngay (VD: "Hổng kiến thức giải phẫu định khu", "Chưa liên kết được giải phẫu và triệu chứng").
+        4. "roadmap": Đưa ra một lộ trình 3 bước (Step 1, Step 2, Step 3) cực kỳ cụ thể để cải thiện chủ đề này. 
+           - Step 1: Tập trung vào tài liệu nào, phương pháp nào (Atlas Netter, Flashcard...).
+           - Step 2: Cách tư duy (Liên hệ chức năng, vẽ sơ đồ tư duy...).
+           - Step 3: Luyện tập nâng cao (Giải case study, chạy trạm...).
     `;
 
     const schema: Schema = {
         type: Type.OBJECT,
         properties: {
-            analysis: { type: Type.STRING },
+            analysis: { type: Type.STRING, description: "Nhận xét chuyên sâu, so sánh lý thuyết và lâm sàng." },
             strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
             weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
             roadmap: {
@@ -332,12 +346,14 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
                 items: {
                     type: Type.OBJECT,
                     properties: {
-                        step: { type: Type.STRING },
-                        details: { type: Type.STRING }
-                    }
+                        step: { type: Type.STRING, description: "Tên bước (VD: Bước 1: Củng cố nền tảng)" },
+                        details: { type: Type.STRING, description: "Chi tiết hành động cần làm" }
+                    },
+                    required: ["step", "details"]
                 }
             }
-        }
+        },
+        required: ["analysis", "strengths", "weaknesses", "roadmap"]
     };
 
     return retryGeminiCall(async () => {
@@ -345,12 +361,13 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
             model: MODEL_MCQ, 
             contents: {
                 role: 'user',
-                parts: [{ text: `Chủ đề: ${topic}. Kết quả: ${JSON.stringify(stats)}. Hãy nhận xét.` }]
+                parts: [{ text: `Phân tích kết quả bài thi chủ đề "${topic}". Số liệu chi tiết: ${JSON.stringify(stats)}.` }]
             },
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
-                responseSchema: schema
+                responseSchema: schema,
+                temperature: 0.7 // Increase slightly for more creative advice
             }
         });
 

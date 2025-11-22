@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateMCQQuestions, analyzeResultWithOtter } from '../services/geminiService';
 import { Difficulty, MCQQuestion, MentorResponse } from '../types';
-import { CheckCircle2, CheckCircle, XCircle, BrainCircuit, RefreshCw, ArrowRight, AlertCircle, BookOpen, Activity, Clock, FileCheck, Trash, Plus, File as FileIcon, Check, Sparkles, Loader2, Trophy, ThumbsUp, ShieldAlert, FileText, Key } from 'lucide-react';
+import { CheckCircle2, CheckCircle, XCircle, BrainCircuit, RefreshCw, ArrowRight, AlertCircle, BookOpen, Activity, Clock, FileCheck, Trash, Plus, File as FileIcon, Check, Sparkles, Loader2, Trophy, ThumbsUp, ShieldAlert, FileText, Key, Stethoscope, Milestone, Footprints } from 'lucide-react';
 import { ThemeType } from '../App';
 
 // Declare pdfjsLib globally
@@ -129,15 +129,16 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
               iconColor: 'hover:text-red-600 dark:hover:text-red-400 hover:border-red-300'
           };
           case 'swift': return {
-              headerGradient: 'from-pink-400 via-purple-400 to-indigo-400',
-              headerIconBg: 'bg-white/20',
-              headerText: 'text-white',
-              headerGlow: 'text-glow-white',
-              inputFocus: 'focus:ring-pink-500',
-              rangeColor: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30',
-              activeDiff: 'bg-pink-100 border-pink-500 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
-              primaryBtn: 'from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 shadow-pink-500/30',
-              iconColor: 'hover:text-pink-600 dark:hover:text-pink-400 hover:border-pink-300'
+              // VIP Eras Style: Holographic & Lavender
+              headerGradient: 'from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_60px_rgba(168,85,247,0.4)]',
+              headerIconBg: 'bg-white/10 backdrop-blur-md border border-purple-500/30',
+              headerText: 'text-purple-100',
+              headerGlow: 'text-glow-white drop-shadow-lg',
+              inputFocus: 'focus:ring-purple-500',
+              rangeColor: 'text-fuchsia-400 dark:text-fuchsia-300 bg-fuchsia-900/30',
+              activeDiff: 'bg-purple-900/40 border-purple-500 text-purple-200 shadow-[0_0_10px_rgba(168,85,247,0.3)]',
+              primaryBtn: 'from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 shadow-[0_0_30px_rgba(236,72,153,0.5)] border border-purple-400/30',
+              iconColor: 'hover:text-purple-400 dark:hover:text-purple-300 hover:border-purple-400'
           };
           case 'blackpink': return {
               headerGradient: 'from-pink-500 to-black',
@@ -289,7 +290,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
   const getLoadingStyles = () => {
     // ... (Theme styles remain the same, omitted for brevity)
     if (theme === 'xmas') return { bar: 'bg-[repeating-linear-gradient(45deg,#dc2626,#dc2626_10px,#ffffff_10px,#ffffff_20px)]', shadow: 'shadow-[0_0_20px_rgba(220,38,38,0.5)]', icon: '🎅', title: 'ÔNG GIÀ NOEL ĐANG SOẠN ĐỀ...', titleGradient: 'from-red-500 to-emerald-600' };
-    if (theme === 'swift') return { bar: 'bg-[repeating-linear-gradient(45deg,#ec4899,#ec4899_10px,#a855f7_10px,#a855f7_20px)]', shadow: 'shadow-[0_0_20px_rgba(236,72,153,0.5)]', icon: '🐍', title: 'RẮN CHÚA ĐANG SOẠN ĐỀ...', titleGradient: 'from-pink-500 to-purple-600' };
+    if (theme === 'swift') return { bar: 'bg-[repeating-linear-gradient(45deg,#a855f7,#a855f7_10px,#ec4899_10px,#ec4899_20px)]', shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.5)]', icon: '🐍', title: 'RẮN CHÚA ĐANG SOẠN ĐỀ...', titleGradient: 'from-purple-500 to-pink-600' };
     if (theme === 'blackpink') return { bar: 'bg-[repeating-linear-gradient(45deg,#ec4899,#ec4899_10px,#0f172a_10px,#0f172a_20px)]', shadow: 'shadow-[0_0_20px_rgba(236,72,153,0.5)]', icon: '🔨', title: 'HẮC HƯỜNG ĐANG SOẠN ĐỀ...', titleGradient: 'from-pink-500 to-slate-900' };
     if (theme === 'aespa') return { bar: 'bg-[repeating-linear-gradient(45deg,#94a3b8,#94a3b8_10px,#a855f7_10px,#a855f7_20px)]', shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.8)]', icon: '👽', title: 'KẾT NỐI VỚI NAEVIS...', titleGradient: 'from-slate-300 via-purple-400 to-indigo-500' };
     if (theme === 'rosie') return { bar: 'bg-[repeating-linear-gradient(45deg,#e11d48,#e11d48_10px,#fbbf24_10px,#fbbf24_20px)]', shadow: 'shadow-[0_0_20px_rgba(225,29,72,0.8)]', icon: '🌹', title: 'ROSIE ĐANG SOẠN ĐỀ...', titleGradient: 'from-rose-500 to-red-600' };
@@ -526,8 +527,8 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
                         <BookOpen className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
                     <div>
-                        <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${themeStyle.headerGlow}`}>{theme === 'showgirl' ? "Kịch Bản Sân Khấu (MCQ)" : "Tạo Đề Trắc Nghiệm"}</h1>
-                        <p className={`text-lg ${themeStyle.headerText}`}>{theme === 'showgirl' ? "AI sẽ thiết kế các bước nhảy kiến thức cho màn trình diễn của bạn." : "AI sẽ đọc tài liệu và tạo bộ câu hỏi theo yêu cầu của bạn."}</p>
+                        <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${themeStyle.headerGlow}`}>{theme === 'showgirl' ? "Kịch Bản Sân Khấu (MCQ)" : theme === 'swift' ? "The Setlist (MCQ)" : "Tạo Đề Trắc Nghiệm"}</h1>
+                        <p className={`text-lg ${themeStyle.headerText}`}>{theme === 'showgirl' ? "AI sẽ thiết kế các bước nhảy kiến thức cho màn trình diễn của bạn." : theme === 'swift' ? "Chọn kỷ nguyên kiến thức và trả lời các câu hỏi hit." : "AI sẽ đọc tài liệu và tạo bộ câu hỏi theo yêu cầu của bạn."}</p>
                     </div>
                 </div>
             </div>
@@ -541,7 +542,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
                                 <span className="flex items-center gap-2 text-orange-500">
                                     <Sparkles className="w-4 h-4" /> Kịch bản chính (Chủ đề)
                                 </span>
-                            ) : "Chủ đề ôn tập"}
+                            ) : theme === 'swift' ? "Era / Album Chủ đề" : "Chủ đề ôn tập"}
                          </label>
                          <input
                             type="text"
@@ -743,20 +744,129 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
                  )}
              </div>
         </div>
-        {/* ... Mentor & Answers sections ... */}
-        {showMentor && mentorData && (
+        
+        {/* UPDATED MENTOR SECTION */}
+        {showMentor && (
              <div ref={mentorSectionRef} className="mb-12 animate-in slide-in-from-bottom-10 duration-700">
-                {/* ... Mentor UI ... */}
-                 <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-amber-200 dark:border-slate-700 shadow-xl">
-                    <div className="flex gap-4 items-start">
-                        <div className="text-4xl">🦦</div>
-                        <div>
-                            <h3 className="font-bold text-lg text-slate-900 dark:text-white">Rái cá nhận xét</h3>
-                            <p className="text-slate-600 dark:text-slate-300 mt-2 italic">{mentorData.analysis}</p>
+                {mentorLoading ? (
+                    <div className="w-full bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-xl border border-amber-200 dark:border-amber-900/30 text-center flex flex-col items-center gap-4">
+                        <div className="text-6xl animate-bounce">🦦</div>
+                        <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse">
+                            Giáo sư Rái cá đang chẩn bệnh cho bài thi của bạn...
+                        </p>
+                    </div>
+                ) : mentorData ? (
+                    <div className="relative bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-950 rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-amber-200 dark:border-slate-700 overflow-hidden">
+                        {/* Decor */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                        
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row gap-8 items-start mb-8 border-b border-amber-200/50 dark:border-slate-700 pb-8">
+                            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                                <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border-4 border-amber-100 dark:border-slate-600">
+                                    <span className="text-5xl animate-[wiggle_3s_infinite]">🦦</span>
+                                </div>
+                                <div className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                                    Senior Professor
+                                </div>
+                            </div>
+                            <div className="flex-1 space-y-4">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">Bệnh án học tập</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-amber-500" /> 
+                                        Chủ đề: <span className="text-slate-800 dark:text-slate-200 font-bold">{topic}</span>
+                                    </p>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border-l-4 border-amber-400 shadow-sm italic text-slate-700 dark:text-slate-300 leading-relaxed relative">
+                                    <span className="absolute top-2 left-2 text-4xl text-amber-200 dark:text-slate-700 font-serif opacity-50">"</span>
+                                    {mentorData.analysis}
+                                    <span className="absolute bottom-2 right-2 text-4xl text-amber-200 dark:text-slate-700 font-serif opacity-50">"</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3-Column Layout for Deep Analysis */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                             {/* Strengths */}
+                            <div className="bg-green-50/80 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-800/50">
+                                    <ThumbsUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                    <h4 className="font-bold text-green-800 dark:text-green-300 uppercase text-xs tracking-wider">Điểm mạnh</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {mentorData.strengths?.map((s, i) => (
+                                        <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                                            <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                            <span>{s}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Weaknesses */}
+                            <div className="bg-red-50/80 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-200 dark:border-red-800/50">
+                                    <Stethoscope className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                    <h4 className="font-bold text-red-800 dark:text-red-300 uppercase text-xs tracking-wider">Cần cải thiện</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {mentorData.weaknesses?.map((w, i) => (
+                                        <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                                            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                            <span>{w}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            
+                             {/* Summary Score or Quick Tip */}
+                             <div className="bg-blue-50/80 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-5 flex flex-col justify-center items-center text-center">
+                                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3 text-blue-600 dark:text-blue-400">
+                                    <BrainCircuit className="w-6 h-6" />
+                                </div>
+                                <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1">Tư duy lâm sàng</h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Hãy luôn đặt câu hỏi "Tại sao?" khi học giải phẫu để nhớ lâu hơn.
+                                </p>
+                             </div>
+                        </div>
+
+                        {/* ROADMAP SECTION */}
+                        <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <Milestone className="w-8 h-8 text-amber-400" />
+                                    <h3 className="text-xl font-bold text-white">Lộ trình điều trị kiến thức (3 Bước)</h3>
+                                </div>
+
+                                <div className="grid md:grid-cols-3 gap-6 relative">
+                                    {/* Connecting Line (Desktop) */}
+                                    <div className="hidden md:block absolute top-6 left-0 w-full h-0.5 bg-slate-700 -z-0"></div>
+
+                                    {mentorData.roadmap?.map((step, idx) => (
+                                        <div key={idx} className="relative z-10 group">
+                                            <div className="w-12 h-12 rounded-full bg-slate-800 border-4 border-slate-700 group-hover:border-amber-500 transition-colors flex items-center justify-center font-bold text-lg mb-4 shadow-lg mx-auto md:mx-0">
+                                                {idx + 1}
+                                            </div>
+                                            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:bg-slate-800 transition-colors">
+                                                <h4 className="font-bold text-amber-400 mb-2 text-lg">{step.step}</h4>
+                                                <p className="text-sm text-slate-300 leading-relaxed">
+                                                    {step.details}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 flex items-center justify-center gap-2 text-xs text-slate-400 opacity-70">
+                                    <Footprints className="w-4 h-4" />
+                                    <span>Theo sát lộ trình này để đạt điểm A+</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    {/* ... Strengths/Weaknesses ... */}
-                 </div>
+                ) : null}
              </div>
         )}
         

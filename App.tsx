@@ -6,7 +6,7 @@ import { MCQMode } from './components/MCQMode';
 import { StationMode } from './components/StationMode';
 import { FlashcardMode } from './components/FlashcardMode';
 import { AppMode, UserProfile } from './types';
-import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles } from 'lucide-react';
+import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles, Music } from 'lucide-react';
 
 export type ThemeType = 'default' | 'xmas' | 'swift' | 'blackpink' | 'aespa' | 'rosie' | 'pkl' | 'showgirl';
 
@@ -26,6 +26,7 @@ const App: React.FC = () => {
   });
   
   const [isLoginExiting, setIsLoginExiting] = useState(false);
+  const [showSwiftGift, setShowSwiftGift] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -40,6 +41,14 @@ const App: React.FC = () => {
     setTimeout(() => {
         setUser(loggedInUser);
         setIsLoginExiting(false);
+        
+        // CHECK FOR SWIFT GIFT (One-time per browser/device)
+        const hasReceivedGift = localStorage.getItem('hasReceivedSwiftVIP');
+        if (!hasReceivedGift) {
+            setTheme('swift');
+            setShowSwiftGift(true);
+            localStorage.setItem('hasReceivedSwiftVIP', 'true');
+        }
     }, 800);
   };
 
@@ -61,10 +70,26 @@ const App: React.FC = () => {
             ? { bg: 'bg-red-50 dark:bg-red-900/20', iconBg: 'bg-red-100 dark:bg-red-900/50', iconText: 'text-red-600 dark:text-red-400', glow: 'rgba(220, 38, 38, 0.8)' }
             : { bg: 'bg-emerald-50 dark:bg-emerald-900/20', iconBg: 'bg-emerald-100 dark:bg-emerald-900/50', iconText: 'text-emerald-600 dark:text-emerald-400', glow: 'rgba(16, 185, 129, 0.8)' };
     } else if (theme === 'swift') {
-        if (type === 'flashcard') return { bg: 'bg-sky-50 dark:bg-sky-900/20', iconBg: 'bg-sky-100 dark:bg-sky-900/50', iconText: 'text-sky-600 dark:text-sky-400', glow: 'rgba(14, 165, 233, 0.8)' };
+        // VIP ERAS STYLE: Holographic Gradients & Deep Midnight
+        if (type === 'flashcard') return { 
+            bg: 'bg-indigo-50/80 dark:bg-[#1e1e3f]/80 border-indigo-200 dark:border-indigo-500/30', 
+            iconBg: 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500', 
+            iconText: 'text-white', 
+            glow: 'rgba(99, 102, 241, 0.8)' 
+        };
         return type === 'mcq'
-            ? { bg: 'bg-pink-50 dark:bg-pink-900/20', iconBg: 'bg-pink-100 dark:bg-pink-900/50', iconText: 'text-pink-600 dark:text-pink-400', glow: 'rgba(236, 72, 153, 0.8)' }
-            : { bg: 'bg-purple-50 dark:bg-purple-900/20', iconBg: 'bg-purple-100 dark:bg-purple-900/50', iconText: 'text-purple-600 dark:text-purple-400', glow: 'rgba(168, 85, 247, 0.8)' };
+            ? { 
+                bg: 'bg-fuchsia-50/80 dark:bg-[#2d1b36]/80 border-fuchsia-200 dark:border-fuchsia-500/30', 
+                iconBg: 'bg-gradient-to-br from-pink-500 via-fuchsia-500 to-purple-600', 
+                iconText: 'text-white', 
+                glow: 'rgba(232, 121, 249, 0.8)' 
+              }
+            : { 
+                bg: 'bg-violet-50/80 dark:bg-[#241b36]/80 border-violet-200 dark:border-violet-500/30', 
+                iconBg: 'bg-gradient-to-br from-purple-600 via-violet-600 to-indigo-600', 
+                iconText: 'text-white', 
+                glow: 'rgba(139, 92, 246, 0.8)' 
+              };
     } else if (theme === 'blackpink') {
         if (type === 'flashcard') return { bg: 'bg-slate-800', iconBg: 'bg-gradient-to-br from-gray-500 to-slate-600', iconText: 'text-white', glow: 'rgba(255, 255, 255, 0.5)' };
         return type === 'mcq'
@@ -119,11 +144,20 @@ const App: React.FC = () => {
       default:
         return (
           <div className="max-w-5xl mx-auto pt-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="text-center mb-16 space-y-4">
+            <div className="text-center mb-16 space-y-4 relative">
+              {/* SWIFT THEME HEADER DECORATION */}
+              {theme === 'swift' && (
+                  <>
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-32 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 blur-3xl -z-10 rounded-full animate-pulse"></div>
+                    <div className="absolute -top-10 left-1/4 text-4xl animate-bounce">✨</div>
+                    <div className="absolute top-0 right-1/4 text-3xl animate-pulse">🧣</div>
+                  </>
+              )}
+
               <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-                {theme === 'showgirl' ? "LIGHTS, CAMERA," : "Xin chào,"} <span className={
+                {theme === 'showgirl' ? "LIGHTS, CAMERA," : theme === 'swift' ? "IT'S BEEN A LONG TIME COMING," : "Xin chào,"} <span className={
                     theme === 'xmas' ? "text-red-600 dark:text-red-500" : 
-                    theme === 'swift' ? "text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600" :
+                    theme === 'swift' ? "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" :
                     theme === 'blackpink' ? "text-pink-500 drop-shadow-[0_0_10px_rgba(236,72,153,0.5)]" :
                     theme === 'aespa' ? "text-transparent bg-clip-text bg-gradient-to-r from-slate-400 via-indigo-400 to-purple-400 drop-shadow-[0_0_10px_rgba(167,139,250,0.5)]" :
                     theme === 'rosie' ? "text-rose-600 dark:text-rose-400 drop-shadow-[0_0_15px_rgba(225,29,72,0.4)]" :
@@ -136,7 +170,7 @@ const App: React.FC = () => {
                 {theme === 'xmas' 
                   ? "Chọn chế độ để bắt đầu ôn luyện kiến thức Giải phẫu học (Mùa Giáng Sinh 🎄)." 
                   : theme === 'swift'
-                  ? "Chào mừng đến với The Anatomy Eras Tour! Are you ready for it? 🐍🧣"
+                  ? "Chào mừng đến với The Eras Tour (VIP Package). Cầm chắc micro và ôn tập nào! 🎤✨"
                   : theme === 'blackpink'
                   ? "Blackpink in your area! Cùng ôn tập thật slay nhé! 🖤💗"
                   : theme === 'aespa'
@@ -154,23 +188,32 @@ const App: React.FC = () => {
             <div className="grid md:grid-cols-3 gap-6">
               <button
                 onClick={() => setMode(AppMode.MCQ)}
-                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
+                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] 
+                ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' 
+                : theme === 'swift' ? 'bg-white/90 dark:bg-[#2d1b36]/90 border border-fuchsia-300 dark:border-fuchsia-600 hover:shadow-[0_0_30px_rgba(232,121,249,0.5)] backdrop-blur-md'
+                : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
               >
-                {/* Showgirl Card Effect: Gradient Border / Glow */}
+                {/* Showgirl Effects */}
                 {theme === 'showgirl' && (
                     <>
                         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        {/* Glitter / Stardust Texture */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-50 transition-opacity duration-500 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] animate-pulse"></div>
-                        
-                        {/* Physical Sparkles Icons */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                             <Sparkles className="absolute top-4 right-1/4 w-4 h-4 text-yellow-200 animate-ping" style={{animationDuration: '2s'}} />
                             <Sparkles className="absolute bottom-1/4 left-10 w-3 h-3 text-white animate-pulse" />
                             <div className="absolute top-1/2 right-4 w-1 h-1 bg-white rounded-full animate-ping"></div>
                         </div>
-
                         <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl group-hover:bg-yellow-400/30 transition-all"></div>
+                    </>
+                )}
+                
+                {/* SWIFT EFFECTS */}
+                {theme === 'swift' && (
+                    <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/5 to-transparent opacity-100 transition-opacity"></div>
+                        <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-fuchsia-500/30 rounded-full blur-3xl group-hover:bg-fuchsia-400/50 transition-all"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"></div>
                     </>
                 )}
 
@@ -182,13 +225,13 @@ const App: React.FC = () => {
                   >
                     {theme === 'showgirl' ? <Ticket className="w-7 h-7 text-white" /> : <BookOpen className="w-7 h-7" />}
                   </div>
-                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-yellow-400' : `text-slate-900 dark:text-white group-hover:${mcqColors.iconText.split(' ')[0]}`}`}>
-                      {theme === 'showgirl' ? "Rehearsal (Lý thuyết)" : "Trắc Nghiệm"}
+                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-yellow-400' : theme === 'swift' ? 'text-slate-900 dark:text-white group-hover:text-fuchsia-400' : `text-slate-900 dark:text-white group-hover:${mcqColors.iconText.split(' ')[0]}`}`}>
+                      {theme === 'showgirl' ? "Rehearsal (Lý thuyết)" : theme === 'swift' ? "The Setlist (MCQ)" : "Trắc Nghiệm"}
                   </h3>
                   <p className={`text-sm mb-4 leading-relaxed ${theme === 'showgirl' ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {theme === 'showgirl' ? "Ôn luyện kịch bản kiến thức. Giải thích chi tiết cho từng bước nhảy." : "Tạo đề thi trắc nghiệm nhanh chóng theo chủ đề. AI chấm điểm và giải thích."}
+                    {theme === 'showgirl' ? "Ôn luyện kịch bản kiến thức. Giải thích chi tiết cho từng bước nhảy." : theme === 'swift' ? "Chọn kỷ nguyên kiến thức và trả lời các câu hỏi hit." : "Tạo đề thi trắc nghiệm nhanh chóng theo chủ đề. AI chấm điểm và giải thích."}
                   </p>
-                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-yellow-500' : mcqColors.iconText}`}>
+                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-yellow-500' : theme === 'swift' ? 'text-fuchsia-600 dark:text-fuchsia-300' : mcqColors.iconText}`}>
                     {theme === 'showgirl' ? "Step into spotlight" : "Bắt đầu ngay"} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </div>
@@ -196,23 +239,33 @@ const App: React.FC = () => {
 
               <button
                 onClick={() => setMode(AppMode.STATION)}
-                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
+                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] 
+                ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' 
+                : theme === 'swift' ? 'bg-white/90 dark:bg-[#241b36]/90 border border-violet-300 dark:border-violet-600 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] backdrop-blur-md'
+                : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
               >
                  {theme === 'showgirl' && (
                     <>
                         <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                        {/* Glitter / Stardust Texture */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-50 transition-opacity duration-500 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] animate-pulse"></div>
-                        
-                        {/* Physical Sparkles Icons */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                             <Sparkles className="absolute top-10 left-10 w-5 h-5 text-orange-200 animate-ping" style={{animationDuration: '1.5s'}} />
                             <Sparkles className="absolute bottom-1/4 right-4 w-3 h-3 text-white animate-pulse" />
                         </div>
-
                         <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-500/20 rounded-full blur-3xl group-hover:bg-orange-400/30 transition-all"></div>
                     </>
                 )}
+
+                {/* SWIFT EFFECTS */}
+                {theme === 'swift' && (
+                    <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent opacity-100 transition-opacity"></div>
+                        <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-500/30 rounded-full blur-3xl group-hover:bg-violet-400/50 transition-all"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                    </>
+                )}
+
                 <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500 ${stationColors.bg} ${theme === 'showgirl' ? 'opacity-20' : ''}`}></div>
                 <div className="relative z-10">
                   <div 
@@ -221,13 +274,13 @@ const App: React.FC = () => {
                   >
                     {theme === 'showgirl' ? <Star className="w-7 h-7 text-white" /> : <Activity className="w-7 h-7" />}
                   </div>
-                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-orange-400' : `text-slate-900 dark:text-white group-hover:${stationColors.iconText.split(' ')[0]}`}`}>
-                      {theme === 'showgirl' ? "Showtime (Chạy trạm)" : "Chạy Trạm (Spot)"}
+                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-orange-400' : theme === 'swift' ? 'text-slate-900 dark:text-white group-hover:text-violet-400' : `text-slate-900 dark:text-white group-hover:${stationColors.iconText.split(' ')[0]}`}`}>
+                      {theme === 'showgirl' ? "Showtime (Chạy trạm)" : theme === 'swift' ? "Vigilante Shit (Spot)" : "Chạy Trạm (Spot)"}
                   </h3>
                   <p className={`text-sm mb-4 leading-relaxed ${theme === 'showgirl' ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                     {theme === 'showgirl' ? "Mô phỏng sân khấu thực tế. Nhận diện cấu trúc dưới ánh đèn spotlight." : "Mô phỏng thi thực hành. AI tạo câu hỏi định danh từ hình ảnh và tính giờ."}
+                     {theme === 'showgirl' ? "Mô phỏng sân khấu thực tế. Nhận diện cấu trúc dưới ánh đèn spotlight." : theme === 'swift' ? "Dont get sad, get even. Nhận diện cấu trúc giải phẫu siêu tốc." : "Mô phỏng thi thực hành. AI tạo câu hỏi định danh từ hình ảnh và tính giờ."}
                   </p>
-                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-orange-500' : stationColors.iconText}`}>
+                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-orange-500' : theme === 'swift' ? 'text-violet-600 dark:text-violet-300' : stationColors.iconText}`}>
                     {theme === 'showgirl' ? "The show must go on" : "Tạo trạm thi"} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </div>
@@ -235,38 +288,48 @@ const App: React.FC = () => {
 
               <button
                 onClick={() => setMode(AppMode.FLASHCARD)}
-                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
+                className={`group p-6 rounded-3xl shadow-md hover:shadow-2xl transition-all duration-300 text-left relative overflow-hidden hover:-translate-y-2 hover:scale-[1.02] 
+                ${theme === 'showgirl' ? 'border border-yellow-500/30 bg-slate-900/60 hover:shadow-glow-gold hover:border-yellow-500/60' 
+                : theme === 'swift' ? 'bg-white/90 dark:bg-[#1e1e3f]/90 border border-indigo-300 dark:border-indigo-600 hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] backdrop-blur-md'
+                : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}
               >
                  {theme === 'showgirl' && (
                     <>
                         <div className="absolute inset-0 bg-gradient-to-br from-teal-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                         {/* Glitter / Stardust Texture */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-50 transition-opacity duration-500 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] animate-pulse"></div>
-                        
-                        {/* Physical Sparkles Icons */}
                         <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
                             <Sparkles className="absolute top-4 right-1/2 w-4 h-4 text-teal-200 animate-ping" style={{animationDuration: '1.8s'}} />
                             <div className="absolute bottom-10 right-10 w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
                         </div>
-
                         <div className="absolute -top-10 -right-10 w-32 h-32 bg-teal-500/20 rounded-full blur-3xl group-hover:bg-teal-400/30 transition-all"></div>
                     </>
                 )}
+
+                {/* SWIFT EFFECTS */}
+                {theme === 'swift' && (
+                    <>
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent opacity-100 transition-opacity"></div>
+                        <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
+                        <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500/30 rounded-full blur-3xl group-hover:bg-indigo-400/50 transition-all"></div>
+                        <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500"></div>
+                    </>
+                )}
+
                 <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-500 ${flashcardColors.bg} ${theme === 'showgirl' ? 'opacity-20' : ''}`}></div>
                 <div className="relative z-10">
                   <div 
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-4 liquid-icon ${flashcardColors.iconBg} ${flashcardColors.iconText}`}
                     style={{ '--glow-color': flashcardColors.glow } as React.CSSProperties}
                   >
-                    {theme === 'showgirl' ? <Crown className="w-7 h-7 text-white" /> : <StickyNote className="w-7 h-7" />}
+                    {theme === 'showgirl' ? <Crown className="w-7 h-7 text-white" /> : theme === 'swift' ? <Music className="w-7 h-7 text-white" /> : <StickyNote className="w-7 h-7" />}
                   </div>
-                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-teal-400' : `text-slate-900 dark:text-white group-hover:${flashcardColors.iconText.split(' ')[0]}`}`}>
-                      {theme === 'showgirl' ? "Script Cards" : "Flashcards"}
+                  <h3 className={`text-xl font-bold mb-2 transition-colors ${theme === 'showgirl' ? 'text-white group-hover:text-teal-400' : theme === 'swift' ? 'text-slate-900 dark:text-white group-hover:text-indigo-400' : `text-slate-900 dark:text-white group-hover:${flashcardColors.iconText.split(' ')[0]}`}`}>
+                      {theme === 'showgirl' ? "Script Cards" : theme === 'swift' ? "Lyrics (Flashcards)" : "Flashcards"}
                   </h3>
                   <p className={`text-sm mb-4 leading-relaxed ${theme === 'showgirl' ? 'text-slate-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                     {theme === 'showgirl' ? "Kịch bản bỏ túi. Tự tạo thẻ để ôn tập lời thoại kiến thức." : "Tự tạo bộ thẻ ghi nhớ và ôn tập mọi lúc."}
+                     {theme === 'showgirl' ? "Kịch bản bỏ túi. Tự tạo thẻ để ôn tập lời thoại kiến thức." : theme === 'swift' ? "Ghi nhớ từng câu hát kiến thức. Dear Reader, get it back." : "Tự tạo bộ thẻ ghi nhớ và ôn tập mọi lúc."}
                   </p>
-                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-teal-500' : flashcardColors.iconText}`}>
+                  <div className={`flex items-center text-sm font-semibold group-hover:translate-x-2 transition-transform ${theme === 'showgirl' ? 'text-teal-500' : theme === 'swift' ? 'text-indigo-600 dark:text-indigo-300' : flashcardColors.iconText}`}>
                     {theme === 'showgirl' ? "Read the script" : "Tạo bộ thẻ"} <ChevronRight className="w-4 h-4 ml-1" />
                   </div>
                 </div>
@@ -295,6 +358,8 @@ const App: React.FC = () => {
       showFeedback={true}
       theme={theme}
       setTheme={setTheme}
+      showSwiftGift={showSwiftGift}
+      onCloseSwiftGift={() => setShowSwiftGift(false)}
     >
       {!user ? (
         <LoginScreen 
