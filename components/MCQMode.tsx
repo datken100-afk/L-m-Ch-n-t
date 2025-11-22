@@ -676,4 +676,397 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                             <span className="uppercase tracking-wide">Thời gian làm bài</span>
                             <span className={`px-2 py-0.5 rounded text-xs ${themeStyle.rangeColor}`}>{timeLimit} phút</span>
                          </label>
-                         <input type="range" min="5" max="60" step="5" value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target
+                         <input type="range" min="5" max="60" step="5" value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} className="liquid-slider w-full" style={{ '--range-progress': `${((timeLimit - 5) / 55) * 100}%` } as React.CSSProperties} />
+                    </div>
+                </div>
+                {/* Diff Buttons */}
+                <div className="mb-8">
+                    <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wide">Mức độ câu hỏi (Chọn nhiều)</label>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {Object.values(Difficulty).map((diff) => (
+                            <button
+                                key={diff}
+                                onClick={() => toggleDifficulty(diff)}
+                                className={`py-3 px-4 rounded-xl border-2 text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2
+                                ${difficulties.includes(diff) ? themeStyle.activeDiff : `bg-slate-50 dark:bg-slate-800 text-slate-500 border-slate-200`}`}
+                            >
+                                {difficulties.includes(diff) && <Check className="w-4 h-4" />}
+                                {diff}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* File Categories */}
+            <div className="grid md:grid-cols-3 gap-6 animate-fade-up" style={{ animationDelay: '200ms' }}>
+                <FileCategory 
+                    icon={<BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
+                    title="Lý thuyết" desc="Sách, Slide (PDF)"
+                    bgGradient="bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/10 dark:to-slate-900"
+                    iconColor="text-blue-600" glowClass="hover:shadow-[0_0_20px_rgba(37,99,235,0.15)] hover:border-blue-300 dark:hover:border-blue-700"
+                    files={theoryFiles} onRemove={(idx) => removeFile(idx, setTheoryFiles)} onTriggerUpload={() => handleTriggerUpload(theoryInputRef)} themeColorClass={themeStyle.iconColor}
+                />
+                <input type="file" multiple accept=".pdf" ref={theoryInputRef} className="hidden" onChange={(e) => handleFileChange(e, setTheoryFiles, theoryFiles)} />
+                {/* ... Other Categories ... */}
+                 <FileCategory 
+                    icon={<Activity className="w-6 h-6 text-red-600 dark:text-red-400" />}
+                    title="Lâm sàng" desc="Ca bệnh (PDF)"
+                    bgGradient="bg-gradient-to-b from-red-50 to-white dark:from-red-900/10 dark:to-slate-900"
+                    iconColor="text-red-600" glowClass="hover:shadow-[0_0_20px_rgba(220,38,38,0.15)] hover:border-red-300 dark:hover:border-red-700"
+                    files={clinicalFiles} onRemove={(idx) => removeFile(idx, setClinicalFiles)} onTriggerUpload={() => handleTriggerUpload(clinicalInputRef)} themeColorClass={themeStyle.iconColor}
+                />
+                <input type="file" multiple accept=".pdf" ref={clinicalInputRef} className="hidden" onChange={(e) => handleFileChange(e, setClinicalFiles, clinicalFiles)} />
+                 <FileCategory 
+                    icon={<FileCheck className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
+                    title="Đề thi mẫu" desc="Ngân hàng cũ (PDF)"
+                    bgGradient="bg-gradient-to-b from-amber-50 to-white dark:from-amber-900/10 dark:to-slate-900"
+                    iconColor="text-amber-600" glowClass="hover:shadow-[0_0_20px_rgba(217,119,6,0.15)] hover:border-amber-300 dark:hover:border-amber-700"
+                    files={sampleFiles} onRemove={(idx) => removeFile(idx, setSampleFiles)} onTriggerUpload={() => handleTriggerUpload(sampleInputRef)} themeColorClass={themeStyle.iconColor}
+                />
+                <input type="file" multiple accept=".pdf" ref={sampleInputRef} className="hidden" onChange={(e) => handleFileChange(e, setSampleFiles, sampleFiles)} />
+            </div>
+
+            {/* DISCLAIMER TEXT */}
+            <div className="text-center mt-2 opacity-60 hover:opacity-100 transition-opacity">
+                <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-3 h-3" />
+                    Cam kết tài liệu hợp pháp. File chỉ được xử lý tạm thời và không lưu trữ.
+                </p>
+            </div>
+            
+            {isProcessingFile && (
+                <div className="flex justify-center items-center gap-2 text-blue-600 font-medium animate-pulse mt-4">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Đang đọc nội dung file...
+                </div>
+            )}
+
+            {/* ERROR UI WITH KEY CHANGE SUGGESTION */}
+            {error && (
+                <div className={`p-4 rounded-xl flex flex-col gap-2 animate-pulse border mt-4 ${error === "QUOTA_ERROR" ? "bg-red-100 dark:bg-red-900/30 border-red-500 text-red-800 dark:text-red-300" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600"}`}>
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span className="text-sm font-medium">
+                            {error === "QUOTA_ERROR" 
+                                ? "Hệ thống đang quá tải hoặc chưa có API Key." 
+                                : error}
+                        </span>
+                    </div>
+                    
+                    {error === "QUOTA_ERROR" && (
+                         <div className="ml-8">
+                             <p className="text-xs mb-2 opacity-90">Vui lòng cập nhật API Key cá nhân để tiếp tục sử dụng không giới hạn.</p>
+                             <button 
+                                className="px-3 py-1.5 bg-white dark:bg-slate-800 text-red-600 dark:text-red-400 text-xs font-bold rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 transition-colors flex items-center gap-1"
+                                onClick={() => {
+                                    // Hint user to go to settings since we can't easily open modal from here without props
+                                    alert("Vui lòng kéo lên đầu trang, nhấn vào Avatar > 'Cấu hình API Key' để nhập khóa Gemini của bạn.");
+                                }}
+                             >
+                                 <Key className="w-3 h-3" /> Hướng dẫn nhập Key
+                             </button>
+                         </div>
+                    )}
+                </div>
+            )}
+
+            <button
+                onClick={handleGenerate}
+                disabled={!topic.trim() || difficulties.length === 0 || isProcessingFile}
+                className={`w-full bg-gradient-to-r ${themeStyle.primaryBtn} text-white font-bold py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center space-x-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 animate-fade-up mt-6`}
+                style={{ animationDelay: '300ms' }}
+            >
+                <Sparkles className="w-6 h-6" />
+                <span>{theme === 'showgirl' ? "Tạo đề thi ngay" : "Tạo đề thi ngay"}</span>
+            </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ... Result View ...
+  if (showResult) {
+    // ... (No changes needed in result view, error logic is handled in creation view)
+    const score = calculateScore();
+    const percentage = Math.round((score / questions.length) * 100);
+
+    return (
+      <div className="max-w-5xl mx-auto pb-20 px-4">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-2xl border border-slate-200 dark:border-slate-700 mb-8 animate-fade-up">
+             <div className="text-center">
+                 <div className="inline-block p-4 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 mb-4 shadow-sm">
+                     <Trophy className="w-12 h-12" />
+                 </div>
+                 <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-2">Kết Quả Bài Thi</h2>
+                 <p className="text-slate-500 dark:text-slate-400 mb-8">Chủ đề: {topic}</p>
+
+                 <div className="flex justify-center items-end gap-2 mb-8">
+                     <span className="text-6xl font-black text-blue-600 dark:text-blue-400">{score}</span>
+                     <span className="text-2xl font-bold text-slate-400 mb-2">/ {questions.length}</span>
+                 </div>
+
+                 {/* Stats Grid */}
+                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Độ chính xác</div>
+                        <div className={`text-xl font-black ${percentage >= 80 ? 'text-green-500' : percentage >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>
+                            {percentage}%
+                        </div>
+                    </div>
+                    {/* ... Other stats ... */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Thời gian</div>
+                        <div className="text-xl font-black text-slate-800 dark:text-slate-200">{formatTime((timeLimit * 60) - timeLeft)}</div>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Đúng</div>
+                        <div className="text-xl font-black text-green-500">{score}</div>
+                    </div>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Sai</div>
+                        <div className="text-xl font-black text-red-500">{questions.length - score}</div>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-col md:flex-row gap-4 justify-center">
+                     <button 
+                        onClick={() => {
+                            setQuestions([]);
+                            setTopic('');
+                            setTheoryFiles([]);
+                            setClinicalFiles([]);
+                            setSampleFiles([]);
+                        }}
+                        className="px-8 py-3 rounded-xl font-bold border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                     >
+                         <RefreshCw className="w-5 h-5" /> Làm đề mới
+                     </button>
+
+                     {!showMentor && (
+                        <button 
+                            onClick={handleConsultMentor}
+                            disabled={mentorLoading}
+                            className="px-8 py-3 rounded-xl font-bold bg-amber-400 hover:bg-amber-500 text-white shadow-lg shadow-amber-400/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            {mentorLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-xl">🦦</span>}
+                            <span>Hỏi Rái Cá (Mentor AI)</span>
+                        </button>
+                     )}
+                 </div>
+                 
+                 {/* Error UI if Mentor fails */}
+                 {error === "QUOTA_ERROR" && (
+                     <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg border border-red-200 text-sm">
+                         Không thể kết nối Rái Cá do hết hạn mức API. Vui lòng cập nhật Key trong Cài đặt.
+                     </div>
+                 )}
+             </div>
+        </div>
+        
+        {/* UPDATED MENTOR SECTION */}
+        {showMentor && (
+             <div ref={mentorSectionRef} className="mb-12 animate-in slide-in-from-bottom-10 duration-700">
+                {mentorLoading ? (
+                    <div className="w-full bg-white dark:bg-slate-900 rounded-[2rem] p-8 shadow-xl border border-amber-200 dark:border-amber-900/30 text-center flex flex-col items-center gap-4">
+                        <div className="text-6xl animate-bounce">🦦</div>
+                        <p className="text-slate-600 dark:text-slate-300 font-medium animate-pulse">
+                            Giáo sư Rái cá đang chẩn bệnh cho bài thi của bạn...
+                        </p>
+                    </div>
+                ) : mentorData ? (
+                    <div className="relative bg-gradient-to-b from-amber-50 to-white dark:from-slate-900 dark:to-slate-950 rounded-[2.5rem] p-8 md:p-10 shadow-2xl border border-amber-200 dark:border-slate-700 overflow-hidden">
+                        {/* Decor */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                        
+                        {/* Header Section */}
+                        <div className="flex flex-col md:flex-row gap-8 items-start mb-8 border-b border-amber-200/50 dark:border-slate-700 pb-8">
+                            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+                                <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-lg border-4 border-amber-100 dark:border-slate-600">
+                                    <span className="text-5xl animate-[wiggle_3s_infinite]">🦦</span>
+                                </div>
+                                <div className="bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                                    Senior Professor
+                                </div>
+                            </div>
+                            <div className="flex-1 space-y-4">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">Bệnh án học tập</h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-amber-500" /> 
+                                        Chủ đề: <span className="text-slate-800 dark:text-slate-200 font-bold">{topic}</span>
+                                    </p>
+                                </div>
+                                <div className="bg-white dark:bg-slate-800 p-5 rounded-2xl border-l-4 border-amber-400 shadow-sm italic text-slate-700 dark:text-slate-300 leading-relaxed relative">
+                                    <span className="absolute top-2 left-2 text-4xl text-amber-200 dark:text-slate-700 font-serif opacity-50">"</span>
+                                    {mentorData.analysis}
+                                    <span className="absolute bottom-2 right-2 text-4xl text-amber-200 dark:text-slate-700 font-serif opacity-50">"</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3-Column Layout for Deep Analysis */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                             {/* Strengths */}
+                            <div className="bg-green-50/80 dark:bg-green-900/10 border border-green-200 dark:border-green-800/50 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-800/50">
+                                    <ThumbsUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                    <h4 className="font-bold text-green-800 dark:text-green-300 uppercase text-xs tracking-wider">Điểm mạnh</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {mentorData.strengths?.map((s, i) => (
+                                        <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                                            <Check className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                                            <span>{s}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Weaknesses */}
+                            <div className="bg-red-50/80 dark:bg-red-900/10 border border-red-200 dark:border-red-800/50 rounded-2xl p-5">
+                                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-red-200 dark:border-red-800/50">
+                                    <Stethoscope className="w-5 h-5 text-red-600 dark:text-red-400" />
+                                    <h4 className="font-bold text-red-800 dark:text-red-300 uppercase text-xs tracking-wider">Cần cải thiện</h4>
+                                </div>
+                                <ul className="space-y-2">
+                                    {mentorData.weaknesses?.map((w, i) => (
+                                        <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                                            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                            <span>{w}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            
+                             {/* Summary Score or Quick Tip */}
+                             <div className="bg-blue-50/80 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/50 rounded-2xl p-5 flex flex-col justify-center items-center text-center">
+                                <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3 text-blue-600 dark:text-blue-400">
+                                    <BrainCircuit className="w-6 h-6" />
+                                </div>
+                                <h4 className="font-bold text-blue-800 dark:text-blue-300 text-sm mb-1">Tư duy lâm sàng</h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    Hãy luôn đặt câu hỏi "Tại sao?" khi học giải phẫu để nhớ lâu hơn.
+                                </p>
+                             </div>
+                        </div>
+
+                        {/* ROADMAP SECTION */}
+                        <div className="bg-slate-900 text-white rounded-2xl p-6 md:p-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <Milestone className="w-8 h-8 text-amber-400" />
+                                    <h3 className="text-xl font-bold text-white">Lộ trình điều trị kiến thức (3 Bước)</h3>
+                                </div>
+
+                                <div className="grid md:grid-cols-3 gap-6 relative">
+                                    {/* Connecting Line (Desktop) */}
+                                    <div className="hidden md:block absolute top-6 left-0 w-full h-0.5 bg-slate-700 -z-0"></div>
+
+                                    {mentorData.roadmap?.map((step, idx) => (
+                                        <div key={idx} className="relative z-10 group">
+                                            <div className="w-12 h-12 rounded-full bg-slate-800 border-4 border-slate-700 group-hover:border-amber-500 transition-colors flex items-center justify-center font-bold text-lg mb-4 shadow-lg mx-auto md:mx-0">
+                                                {idx + 1}
+                                            </div>
+                                            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:bg-slate-800 transition-colors">
+                                                <h4 className="font-bold text-amber-400 mb-2 text-lg">{step.step}</h4>
+                                                <p className="text-sm text-slate-300 leading-relaxed">
+                                                    {step.details}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-8 flex items-center justify-center gap-2 text-xs text-slate-400 opacity-70">
+                                    <Footprints className="w-4 h-4" />
+                                    <span>Theo sát lộ trình này để đạt điểm A+</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+             </div>
+        )}
+        
+        <div className="space-y-6">
+             <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <FileText className="w-5 h-5" /> Chi tiết đáp án
+                </h3>
+                <button onClick={() => setIsResultMinimized(!isResultMinimized)} className="text-slate-500 hover:text-blue-500 text-sm font-medium">
+                    {isResultMinimized ? "Hiện tất cả" : "Thu gọn"}
+                </button>
+             </div>
+
+             {!isResultMinimized && questions.map((q, idx) => {
+                 const userAns = userAnswers[q.id];
+                 const isCorrect = userAns === q.correctAnswer;
+                 return (
+                     <div key={q.id} className={`bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border-l-4 ${isCorrect ? 'border-l-green-500 border-slate-100 dark:border-slate-800' : 'border-l-red-500 border-red-100 dark:border-red-900/30'}`}>
+                         {/* ... Question Content ... */}
+                         <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-2">Câu {idx+1}: {q.question}</h4>
+                         <div className="text-sm text-slate-600 dark:text-slate-400 mb-2">Đáp án đúng: <span className="font-bold text-green-600">{q.correctAnswer}</span></div>
+                         <p className="text-xs text-slate-500 bg-slate-50 dark:bg-slate-800 p-2 rounded">{q.explanation}</p>
+                     </div>
+                 );
+             })}
+        </div>
+      </div>
+    );
+  }
+
+  // Question View
+  const currentQIdx = questions.findIndex(q => !userAnswers[q.id]);
+  const activeQIdx = currentQIdx === -1 ? questions.length - 1 : currentQIdx;
+  const activeQ = questions[activeQIdx];
+
+  return (
+    <div className="max-w-3xl mx-auto pb-20 px-4">
+        {/* Timer & Progress ... */}
+        <div className="sticky top-20 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 mb-6">
+            <div className="flex justify-between items-center mb-2">
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
+                    <Clock className="w-4 h-4" />
+                    <span className={`font-mono text-lg ${timeLeft < 60 ? 'text-red-500 animate-pulse font-bold' : ''}`}>{formatTime(timeLeft)}</span>
+                </div>
+                <div className="text-sm font-bold text-slate-700 dark:text-slate-300">Câu {activeQIdx + 1} <span className="text-slate-400">/ {questions.length}</span></div>
+            </div>
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500 transition-all duration-300 ease-out" style={{ width: `${((activeQIdx) / questions.length) * 100}%` }}></div>
+            </div>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 shadow-xl border border-slate-200 dark:border-slate-700 min-h-[400px] flex flex-col animate-in slide-in-from-right-8 duration-300 key={activeQ.id}">
+             <div className="mb-6">
+                 <span className="inline-block px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">{activeQ.difficulty || "Kiến thức chung"}</span>
+                 <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white leading-relaxed">{activeQ.question}</h3>
+             </div>
+
+             <div className="space-y-3 flex-1">
+                 {activeQ.options.map((opt, idx) => (
+                     <button
+                        key={idx}
+                        onClick={() => handleAnswer(activeQ.id, opt)}
+                        className={`w-full p-4 rounded-xl text-left border-2 transition-all duration-200 flex items-center gap-3 group
+                        ${userAnswers[activeQ.id] === opt ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 shadow-md' : 'border-slate-100 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'}`}
+                     >
+                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${userAnswers[activeQ.id] === opt ? 'border-blue-500 bg-blue-500 text-white' : 'border-slate-300 text-transparent group-hover:border-blue-400'}`}>
+                             <div className="w-2 h-2 bg-white rounded-full"></div>
+                         </div>
+                         <span className="text-base font-medium">{opt}</span>
+                     </button>
+                 ))}
+             </div>
+             
+             {activeQIdx === questions.length - 1 && (
+                 <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-6">
+                     <button onClick={handleFinishExam} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2">
+                         <CheckCircle className="w-5 h-5" /> Nộp bài
+                     </button>
+                 </div>
+             )}
+        </div>
+    </div>
+  );
+};

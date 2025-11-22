@@ -13,7 +13,6 @@ export interface UserProfile {
   studentId: string;
   avatar?: string; // Base64 image string
   isVipShowgirl?: boolean; // Trạng thái đã mua giao diện Showgirl
-  hasReceivedGift?: boolean; // Trạng thái đã nhận quà chào mừng (First Login)
 }
 
 export interface MCQQuestion {

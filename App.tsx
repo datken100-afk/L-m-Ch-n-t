@@ -11,7 +11,7 @@ import { AppMode, UserProfile } from './types';
 import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles, Music, History, Loader2 } from 'lucide-react';
 import { auth, db } from './firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 export type ThemeType = 'default' | 'xmas' | 'swift' | 'blackpink' | 'aespa' | 'rosie' | 'pkl' | 'showgirl';
 
@@ -55,6 +55,19 @@ const App: React.FC = () => {
       }
   }, [theme]);
 
+  // Helper to check and show gift (One-time per User ID)
+  const checkAndShowGift = (uid: string) => {
+      const key = `hasReceivedSwiftVIP_${uid}`;
+      const hasReceivedGift = localStorage.getItem(key);
+      
+      if (!hasReceivedGift) {
+          // Only switch if current theme is default/xmas to avoid overwriting other preferences
+          setTheme(prev => (prev === 'default' || prev === 'xmas') ? 'swift' : prev);
+          setShowSwiftGift(true);
+          localStorage.setItem(key, 'true');
+      }
+  };
+
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -66,23 +79,13 @@ const App: React.FC = () => {
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            const profile: UserProfile = {
+            setUser({
               uid: currentUser.uid,
               fullName: userData.fullName,
               studentId: userData.studentId,
               avatar: userData.avatar || undefined,
-              isVipShowgirl: userData.isVipShowgirl || false,
-              hasReceivedGift: userData.hasReceivedGift || false
-            };
-            setUser(profile);
-
-            // Check if user should receive the One-Time Gift (First Login Ever)
-            // If using specific theme promo like Swift, we can force it if user hasn't seen it.
-            if (!profile.hasReceivedGift) {
-                setTheme('swift'); // Force Swift theme for the intro
-                setShowSwiftGift(true);
-            }
-
+              isVipShowgirl: userData.isVipShowgirl || false
+            });
           } else {
             // Fallback if Firestore doc doesn't exist
             setUser({
@@ -90,10 +93,12 @@ const App: React.FC = () => {
               fullName: currentUser.displayName || "User",
               studentId: "N/A",
               avatar: currentUser.photoURL || undefined,
-              isVipShowgirl: false,
-              hasReceivedGift: false
+              isVipShowgirl: false
             });
           }
+          
+          // Check for gift on auto-login/refresh as well
+          checkAndShowGift(currentUser.uid);
 
         } catch (error) {
           console.error("Error fetching user profile:", error);
@@ -116,10 +121,9 @@ const App: React.FC = () => {
         setUser(loggedInUser);
         setIsLoginExiting(false);
         
-        // Check gift for manual login as well
-        if (loggedInUser.uid && !loggedInUser.hasReceivedGift) {
-             setTheme('swift');
-             setShowSwiftGift(true);
+        // Check for gift on manual login
+        if (loggedInUser.uid) {
+            checkAndShowGift(loggedInUser.uid);
         }
     }, 800);
   };
@@ -136,23 +140,6 @@ const App: React.FC = () => {
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
     setUser(updatedUser);
-  };
-
-  const handleCloseGift = async () => {
-      setShowSwiftGift(false);
-      
-      // Persist "Gift Received" state to Firestore so it never shows again for this account
-      if (user?.uid) {
-          try {
-              await updateDoc(doc(db, "users", user.uid), {
-                  hasReceivedGift: true
-              });
-              // Update local state
-              setUser(prev => prev ? { ...prev, hasReceivedGift: true } : null);
-          } catch (e) {
-              console.error("Failed to update gift status", e);
-          }
-      }
   };
 
   const currentYear = new Date().getFullYear();
@@ -515,7 +502,7 @@ const App: React.FC = () => {
       theme={theme}
       setTheme={setTheme}
       showSwiftGift={showSwiftGift}
-      onCloseSwiftGift={handleCloseGift}
+      onCloseSwiftGift={() => setShowSwiftGift(false)}
     >
       <InstallPWA theme={theme} />
       

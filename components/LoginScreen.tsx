@@ -109,8 +109,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
                 fullName: userData.fullName,
                 studentId: userData.studentId,
                 avatar: userData.avatar || undefined,
-                isVipShowgirl: userData.isVipShowgirl || false, // Retrieve VIP status
-                hasReceivedGift: userData.hasReceivedGift || false
+                isVipShowgirl: userData.isVipShowgirl || false // Retrieve VIP status
             });
         } else {
              // Fallback if user exists in Auth but not in Firestore (Unlikely but safe)
@@ -119,8 +118,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
                 fullName: userCredential.user.displayName || email.split('@')[0],
                 studentId: "N/A",
                 avatar: undefined,
-                isVipShowgirl: false,
-                hasReceivedGift: false
+                isVipShowgirl: false
             });
         }
 
@@ -180,7 +178,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
             email: email,
             avatar: avatar || null,
             isVipShowgirl: false, // Default to not VIP
-            hasReceivedGift: false, // Default to false
             createdAt: new Date().toISOString()
         };
 
@@ -192,8 +189,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
             fullName: newUser.fullName,
             studentId: newUser.studentId,
             avatar: newUser.avatar || undefined,
-            isVipShowgirl: false,
-            hasReceivedGift: false
+            isVipShowgirl: false
         });
 
     } catch (err: any) {
