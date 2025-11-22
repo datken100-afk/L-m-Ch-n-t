@@ -4,6 +4,7 @@ export enum AppMode {
   MCQ = 'MCQ', // Trắc nghiệm
   STATION = 'STATION', // Chạy trạm
   FLASHCARD = 'FLASHCARD', // Thẻ ghi nhớ
+  HISTORY = 'HISTORY', // Lịch sử thi
 }
 
 export interface UserProfile {
@@ -96,4 +97,18 @@ export interface FlashcardDeck {
   description: string;
   cards: Flashcard[];
   createdAt: number;
+}
+
+// History Interfaces
+export interface ExamHistory {
+  id: string;
+  type: 'MCQ' | 'STATION';
+  topic: string;
+  score: number;
+  totalQuestions: number;
+  timestamp: number;
+  questions: MCQQuestion[]; // Store the full questions to review later
+  userAnswers: Record<string, string>;
+  timeLimit: number;
+  createdAt: any; // Firestore Timestamp
 }

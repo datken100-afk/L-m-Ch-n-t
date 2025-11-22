@@ -1,9 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { generateMCQQuestions, analyzeResultWithOtter } from '../services/geminiService';
-import { Difficulty, MCQQuestion, MentorResponse } from '../types';
+import { Difficulty, MCQQuestion, MentorResponse, UserProfile, ExamHistory } from '../types';
 import { CheckCircle2, CheckCircle, XCircle, BrainCircuit, RefreshCw, ArrowRight, AlertCircle, BookOpen, Activity, Clock, FileCheck, Trash, Plus, File as FileIcon, Check, Sparkles, Loader2, Trophy, ThumbsUp, ShieldAlert, FileText, Key, Stethoscope, Milestone, Footprints } from 'lucide-react';
 import { ThemeType } from '../App';
+import { db } from '../firebaseConfig';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 // Declare pdfjsLib globally
 declare const pdfjsLib: any;
@@ -81,9 +83,10 @@ const FileCategory: React.FC<FileCategoryProps> = ({
 interface MCQModeProps {
     onBack: () => void;
     theme: ThemeType;
+    user: UserProfile;
 }
 
-export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
+export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
   const [topic, setTopic] = useState('');
   const [count, setCount] = useState(10); 
   const [timeLimit, setTimeLimit] = useState(15); 
@@ -335,12 +338,13 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
     };
   }, [loading, theme]);
 
+  // Timer and Auto-submit
   useEffect(() => {
     if (questions.length === 0 || showResult || loading) return;
 
     if (timeLeft <= 0) {
         if (timeLeft === 0 && !loading && questions.length > 0) {
-            setShowResult(true);
+            handleFinishExam();
         }
         return;
     }
@@ -427,6 +431,32 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
       if (userAnswers[q.id] === q.correctAnswer) score++;
     });
     return score;
+  };
+
+  const handleFinishExam = async () => {
+      setShowResult(true);
+      
+      // Save History to Firebase
+      if (user.uid) {
+        try {
+            const score = calculateScore();
+            const historyData = {
+                type: 'MCQ',
+                topic: topic,
+                score: score,
+                totalQuestions: questions.length,
+                questions: questions,
+                userAnswers: userAnswers,
+                timeLimit: timeLimit,
+                timestamp: Date.now(),
+                createdAt: serverTimestamp()
+            };
+            
+            await addDoc(collection(db, 'users', user.uid, 'exam_history'), historyData);
+        } catch (e) {
+            console.error("Error saving history:", e);
+        }
+      }
   };
 
   const handleConsultMentor = async () => {
@@ -942,7 +972,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme }) => {
              
              {activeQIdx === questions.length - 1 && (
                  <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-6">
-                     <button onClick={() => setShowResult(true)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2">
+                     <button onClick={handleFinishExam} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center gap-2">
                          <CheckCircle className="w-5 h-5" /> Nộp bài
                      </button>
                  </div>
