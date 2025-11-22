@@ -6,6 +6,7 @@ import { MCQMode } from './components/MCQMode';
 import { StationMode } from './components/StationMode';
 import { FlashcardMode } from './components/FlashcardMode';
 import { HistoryMode } from './components/HistoryMode';
+import { InstallPWA } from './components/InstallPWA';
 import { AppMode, UserProfile } from './types';
 import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles, Music, History } from 'lucide-react';
 
@@ -424,6 +425,7 @@ const App: React.FC = () => {
       showSwiftGift={showSwiftGift}
       onCloseSwiftGift={() => setShowSwiftGift(false)}
     >
+      <InstallPWA theme={theme} />
       {!user ? (
         <LoginScreen 
           onLogin={handleLogin} 

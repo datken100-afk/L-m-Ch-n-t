@@ -223,15 +223,20 @@ export const generateMCQQuestions = async (
 
 export const generateStationQuestionFromImage = async (
     base64Image: string,
-    topic: string
+    topic: string,
+    detailedTopic: string = ""
 ): Promise<{ questions: any[], isValid: boolean }> => {
     const ai = getAI();
 
     const systemInstruction = `
-        Bạn là trạm trưởng thi chạy trạm giải phẫu.
-        Nhiệm vụ: Nhìn hình ảnh lát cắt/mô hình giải phẫu và đặt 1 câu hỏi định danh cấu trúc (VD: "Chi tiết số 1 là gì?", "Cấu trúc mũi tên chỉ vào?").
-        Chủ đề: "${topic}".
-        Nếu hình ảnh KHÔNG RÕ RÀNG hoặc KHÔNG PHẢI GIẢI PHẪU, trả về danh sách câu hỏi rỗng.
+        Bạn là trạm trưởng thi chạy trạm giải phẫu (Spot Test).
+        Nhiệm vụ: Nhìn hình ảnh lát cắt hoặc mô hình giải phẫu và đặt 1 câu hỏi định danh cấu trúc (VD: "Chi tiết số 1 là gì?", "Cấu trúc mũi tên chỉ vào?").
+        
+        Bối cảnh chương học: "${topic}".
+        ${detailedTopic ? `Yêu cầu đặc biệt: Tập trung vào các chi tiết liên quan đến "${detailedTopic}".` : ""}
+
+        Nếu hình ảnh chứa các chi tiết giải phẫu rõ ràng (số, mũi tên, hoặc cấu trúc đặc trưng), hãy tạo câu hỏi.
+        Nếu hình ảnh KHÔNG RÕ RÀNG, quá mờ, hoặc KHÔNG PHẢI GIẢI PHẪU, hãy trả về isValid: false.
     `;
 
     const schema: Schema = {
@@ -263,7 +268,7 @@ export const generateStationQuestionFromImage = async (
                 role: 'user',
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } },
-                    { text: "Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này." }
+                    { text: `Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này${detailedTopic ? ` liên quan đến ${detailedTopic}` : ""}.` }
                 ]
             },
             config: {

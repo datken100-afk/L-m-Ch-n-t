@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateMCQQuestions, analyzeResultWithOtter } from '../services/geminiService';
 import { Difficulty, MCQQuestion, MentorResponse, UserProfile, ExamHistory } from '../types';
-import { CheckCircle2, CheckCircle, XCircle, BrainCircuit, RefreshCw, ArrowRight, AlertCircle, BookOpen, Activity, Clock, FileCheck, Trash, Plus, File as FileIcon, Check, Sparkles, Loader2, Trophy, ThumbsUp, ShieldAlert, FileText, Key, Stethoscope, Milestone, Footprints } from 'lucide-react';
+import { CheckCircle2, CheckCircle, XCircle, BrainCircuit, RefreshCw, ArrowRight, AlertCircle, BookOpen, Activity, Clock, FileCheck, Trash, Plus, File as FileIcon, Check, Sparkles, Loader2, Trophy, ThumbsUp, ShieldAlert, FileText, Key, Stethoscope, Milestone, Footprints, Scale, ShieldCheck } from 'lucide-react';
 import { ThemeType } from '../App';
 import { db } from '../firebaseConfig';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
@@ -18,6 +18,7 @@ interface UploadedFile {
 
 const MAX_FILE_SIZE = 200 * 1024 * 1024; 
 const MAX_FILES_PER_CATEGORY = 3;
+const COPYRIGHT_KEY_PREFIX = 'otter_copyright_agreed_';
 
 const formatText = (text: string) => {
   if (!text) return "";
@@ -33,12 +34,12 @@ interface FileCategoryProps {
   glowClass: string;
   files: UploadedFile[];
   onRemove: (index: number) => void;
-  onAdd: () => void;
+  onTriggerUpload: () => void; // Changed from onAdd to onTriggerUpload
   themeColorClass: string; 
 }
 
 const FileCategory: React.FC<FileCategoryProps> = ({ 
-    icon, title, desc, bgGradient, iconColor, glowClass, files, onRemove, onAdd, themeColorClass
+    icon, title, desc, bgGradient, iconColor, glowClass, files, onRemove, onTriggerUpload, themeColorClass
 }) => {
     return (
         <div className={`group relative rounded-2xl border border-slate-200 dark:border-slate-700 p-4 transition-all duration-300 ${bgGradient} ${glowClass}`}>
@@ -51,7 +52,7 @@ const FileCategory: React.FC<FileCategoryProps> = ({
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{desc}</p>
                 </div>
                 <button 
-                    onClick={onAdd}
+                    onClick={onTriggerUpload}
                     className={`w-8 h-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm active:scale-90 text-slate-400 ${themeColorClass}`}
                     title="Thêm tài liệu"
                 >
@@ -72,7 +73,7 @@ const FileCategory: React.FC<FileCategoryProps> = ({
                     ))}
                 </div>
             ) : (
-                <div className={`relative z-10 mt-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-3 text-center transition-colors cursor-pointer bg-white/30 dark:bg-black/10 hover:border-slate-400 dark:hover:border-slate-600`} onClick={onAdd}>
+                <div className={`relative z-10 mt-2 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-3 text-center transition-colors cursor-pointer bg-white/30 dark:bg-black/10 hover:border-slate-400 dark:hover:border-slate-600`} onClick={onTriggerUpload}>
                     <p className="text-xs text-slate-400 font-medium">Chưa có file nào. <br/> Nhấn + để thêm.</p>
                 </div>
             )}
@@ -112,6 +113,10 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
   const [showMentor, setShowMentor] = useState(false);
   const [mentorLoading, setMentorLoading] = useState(false);
   const [mentorData, setMentorData] = useState<MentorResponse | null>(null);
+
+  // COPYRIGHT STATE
+  const [showCopyrightModal, setShowCopyrightModal] = useState(false);
+  const [pendingInputRef, setPendingInputRef] = useState<React.RefObject<HTMLInputElement> | null>(null);
 
   const theoryInputRef = useRef<HTMLInputElement>(null);
   const clinicalInputRef = useRef<HTMLInputElement>(null);
@@ -212,6 +217,32 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
       }
   };
   const themeStyle = getThemeStyles();
+
+  // --- COPYRIGHT HANDLERS ---
+  const handleTriggerUpload = (targetInputRef: React.RefObject<HTMLInputElement>) => {
+      const key = `${COPYRIGHT_KEY_PREFIX}${user.uid}`;
+      const hasAgreed = localStorage.getItem(key);
+
+      if (hasAgreed) {
+          targetInputRef.current?.click();
+      } else {
+          setPendingInputRef(targetInputRef);
+          setShowCopyrightModal(true);
+      }
+  };
+
+  const handleConfirmCopyright = () => {
+      if (user.uid) {
+        localStorage.setItem(`${COPYRIGHT_KEY_PREFIX}${user.uid}`, 'true');
+      }
+      setShowCopyrightModal(false);
+      
+      // Trigger the pending input click
+      if (pendingInputRef && pendingInputRef.current) {
+          pendingInputRef.current.click();
+      }
+      setPendingInputRef(null);
+  };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
       const arrayBuffer = await file.arrayBuffer();
@@ -486,8 +517,8 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
       });
 
       try {
-          const response = await analyzeResultWithOtter(topic, stats);
-          setMentorData(response);
+          const analyzeResult = await analyzeResultWithOtter(topic, stats);
+          setMentorData(analyzeResult);
       } catch (e: any) {
           console.error("Mentor Error", e);
           if (e.message.includes("QUOTA") || e.message.includes("MISSING_API_KEY")) {
@@ -540,7 +571,57 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
 
   if (questions.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto pb-20 px-4">
+      <div className="max-w-4xl mx-auto pb-20 px-4 relative">
+        {/* COPYRIGHT MODAL */}
+        {showCopyrightModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in p-4">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
+                    <div className="flex flex-col items-center text-center mb-6">
+                        <div className={`w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 ${theme === 'showgirl' ? 'text-orange-500' : 'text-blue-600'}`}>
+                            <Scale className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                            Tuyên bố bản quyền & Trách nhiệm
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                            Vui lòng xác nhận trước khi tải lên tài liệu.
+                        </p>
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl border border-slate-100 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 leading-relaxed text-justify mb-8">
+                        <p>
+                            Bằng việc tải lên tài liệu, người dùng cam kết sở hữu quyền sử dụng hợp pháp và chịu hoàn toàn trách nhiệm về nội dung. 
+                        </p>
+                        <p className="mt-2">
+                            Ứng dụng <span className="font-bold">AnatomyOtter</span> không lưu trữ vĩnh viễn, không chia sẻ dữ liệu và miễn trừ mọi trách nhiệm liên quan đến tranh chấp bản quyền. Tài liệu chỉ được xử lý tạm thời để tạo câu hỏi và tự động xóa sau khi hoàn tất.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <button 
+                            onClick={handleConfirmCopyright}
+                            className={`w-full py-3 rounded-xl text-white font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2
+                                ${theme === 'showgirl' ? 'bg-gradient-to-r from-teal-500 to-orange-500' : 
+                                  theme === 'xmas' ? 'bg-gradient-to-r from-red-600 to-green-600' :
+                                  'bg-blue-600 hover:bg-blue-700'}
+                            `}
+                        >
+                            <ShieldCheck className="w-5 h-5" /> Tôi đồng ý và chịu trách nhiệm
+                        </button>
+                        <button 
+                            onClick={() => {
+                                setShowCopyrightModal(false);
+                                setPendingInputRef(null);
+                            }}
+                            className="w-full py-3 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Hủy bỏ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         <div className="flex items-center mb-6">
             <button onClick={onBack} className="mr-4 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors">
                 <ArrowRight className="w-6 h-6 rotate-180" />
@@ -624,7 +705,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                     title="Lý thuyết" desc="Sách, Slide (PDF)"
                     bgGradient="bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/10 dark:to-slate-900"
                     iconColor="text-blue-600" glowClass="hover:shadow-[0_0_20px_rgba(37,99,235,0.15)] hover:border-blue-300 dark:hover:border-blue-700"
-                    files={theoryFiles} onRemove={(idx) => removeFile(idx, setTheoryFiles)} onAdd={() => theoryInputRef.current?.click()} themeColorClass={themeStyle.iconColor}
+                    files={theoryFiles} onRemove={(idx) => removeFile(idx, setTheoryFiles)} onTriggerUpload={() => handleTriggerUpload(theoryInputRef)} themeColorClass={themeStyle.iconColor}
                 />
                 <input type="file" multiple accept=".pdf" ref={theoryInputRef} className="hidden" onChange={(e) => handleFileChange(e, setTheoryFiles, theoryFiles)} />
                 {/* ... Other Categories ... */}
@@ -633,7 +714,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                     title="Lâm sàng" desc="Ca bệnh (PDF)"
                     bgGradient="bg-gradient-to-b from-red-50 to-white dark:from-red-900/10 dark:to-slate-900"
                     iconColor="text-red-600" glowClass="hover:shadow-[0_0_20px_rgba(220,38,38,0.15)] hover:border-red-300 dark:hover:border-red-700"
-                    files={clinicalFiles} onRemove={(idx) => removeFile(idx, setClinicalFiles)} onAdd={() => clinicalInputRef.current?.click()} themeColorClass={themeStyle.iconColor}
+                    files={clinicalFiles} onRemove={(idx) => removeFile(idx, setClinicalFiles)} onTriggerUpload={() => handleTriggerUpload(clinicalInputRef)} themeColorClass={themeStyle.iconColor}
                 />
                 <input type="file" multiple accept=".pdf" ref={clinicalInputRef} className="hidden" onChange={(e) => handleFileChange(e, setClinicalFiles, clinicalFiles)} />
                  <FileCategory 
@@ -641,13 +722,21 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                     title="Đề thi mẫu" desc="Ngân hàng cũ (PDF)"
                     bgGradient="bg-gradient-to-b from-amber-50 to-white dark:from-amber-900/10 dark:to-slate-900"
                     iconColor="text-amber-600" glowClass="hover:shadow-[0_0_20px_rgba(217,119,6,0.15)] hover:border-amber-300 dark:hover:border-amber-700"
-                    files={sampleFiles} onRemove={(idx) => removeFile(idx, setSampleFiles)} onAdd={() => sampleInputRef.current?.click()} themeColorClass={themeStyle.iconColor}
+                    files={sampleFiles} onRemove={(idx) => removeFile(idx, setSampleFiles)} onTriggerUpload={() => handleTriggerUpload(sampleInputRef)} themeColorClass={themeStyle.iconColor}
                 />
                 <input type="file" multiple accept=".pdf" ref={sampleInputRef} className="hidden" onChange={(e) => handleFileChange(e, setSampleFiles, sampleFiles)} />
             </div>
+
+            {/* DISCLAIMER TEXT */}
+            <div className="text-center mt-2 opacity-60 hover:opacity-100 transition-opacity">
+                <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-3 h-3" />
+                    Cam kết tài liệu hợp pháp. File chỉ được xử lý tạm thời và không lưu trữ.
+                </p>
+            </div>
             
             {isProcessingFile && (
-                <div className="flex justify-center items-center gap-2 text-blue-600 font-medium animate-pulse">
+                <div className="flex justify-center items-center gap-2 text-blue-600 font-medium animate-pulse mt-4">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Đang đọc nội dung file...
                 </div>
@@ -655,7 +744,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
 
             {/* ERROR UI WITH KEY CHANGE SUGGESTION */}
             {error && (
-                <div className={`p-4 rounded-xl flex flex-col gap-2 animate-pulse border ${error === "QUOTA_ERROR" ? "bg-red-100 dark:bg-red-900/30 border-red-500 text-red-800 dark:text-red-300" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600"}`}>
+                <div className={`p-4 rounded-xl flex flex-col gap-2 animate-pulse border mt-4 ${error === "QUOTA_ERROR" ? "bg-red-100 dark:bg-red-900/30 border-red-500 text-red-800 dark:text-red-300" : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-600"}`}>
                     <div className="flex items-center gap-3">
                         <AlertCircle className="w-5 h-5 flex-shrink-0" />
                         <span className="text-sm font-medium">
@@ -685,7 +774,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
             <button
                 onClick={handleGenerate}
                 disabled={!topic.trim() || difficulties.length === 0 || isProcessingFile}
-                className={`w-full bg-gradient-to-r ${themeStyle.primaryBtn} text-white font-bold py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center space-x-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 animate-fade-up`}
+                className={`w-full bg-gradient-to-r ${themeStyle.primaryBtn} text-white font-bold py-5 rounded-2xl shadow-xl transition-all flex items-center justify-center space-x-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 animate-fade-up mt-6`}
                 style={{ animationDelay: '300ms' }}
             >
                 <Sparkles className="w-6 h-6" />
