@@ -8,7 +8,10 @@ import { FlashcardMode } from './components/FlashcardMode';
 import { HistoryMode } from './components/HistoryMode';
 import { InstallPWA } from './components/InstallPWA';
 import { AppMode, UserProfile } from './types';
-import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles, Music, History } from 'lucide-react';
+import { BookOpen, Activity, ChevronRight, StickyNote, Crown, Ticket, Star, Sparkles, Music, History, Loader2 } from 'lucide-react';
+import { auth, db } from './firebaseConfig';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export type ThemeType = 'default' | 'xmas' | 'swift' | 'blackpink' | 'aespa' | 'rosie' | 'pkl' | 'showgirl';
 
@@ -16,9 +19,15 @@ const App: React.FC = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [darkMode, setDarkMode] = useState(false);
+  const [isSessionLoading, setIsSessionLoading] = useState(true); // Loading state for Auth check
   
-  // Logic: Default theme is 'xmas' until the end of Dec 26, 2025
+  // Logic: Check LocalStorage first, then Date logic
   const [theme, setTheme] = useState<ThemeType>(() => {
+    const savedTheme = localStorage.getItem('otter_theme');
+    if (savedTheme) {
+        return savedTheme as ThemeType;
+    }
+
     const today = new Date();
     const xmasLimit = new Date('2025-12-26T23:59:59'); // End of day 26/12/2025
     if (today <= xmasLimit) {
@@ -30,6 +39,7 @@ const App: React.FC = () => {
   const [isLoginExiting, setIsLoginExiting] = useState(false);
   const [showSwiftGift, setShowSwiftGift] = useState(false);
 
+  // Dark Mode Effect
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -38,25 +48,94 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  // Theme Persistence Effect
+  useEffect(() => {
+      if (theme) {
+          localStorage.setItem('otter_theme', theme);
+      }
+  }, [theme]);
+
+  // Helper to check and show gift (One-time per User ID)
+  const checkAndShowGift = (uid: string) => {
+      const key = `hasReceivedSwiftVIP_${uid}`;
+      const hasReceivedGift = localStorage.getItem(key);
+      
+      if (!hasReceivedGift) {
+          // Only switch if current theme is default/xmas to avoid overwriting other preferences
+          setTheme(prev => (prev === 'default' || prev === 'xmas') ? 'swift' : prev);
+          setShowSwiftGift(true);
+          localStorage.setItem(key, 'true');
+      }
+  };
+
+  // --- SESSION PERSISTENCE LOGIC ---
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        try {
+          // Fetch detailed user profile from Firestore
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setUser({
+              uid: currentUser.uid,
+              fullName: userData.fullName,
+              studentId: userData.studentId,
+              avatar: userData.avatar || undefined,
+              isVipShowgirl: userData.isVipShowgirl || false
+            });
+          } else {
+            // Fallback if Firestore doc doesn't exist
+            setUser({
+              uid: currentUser.uid,
+              fullName: currentUser.displayName || "User",
+              studentId: "N/A",
+              avatar: currentUser.photoURL || undefined,
+              isVipShowgirl: false
+            });
+          }
+          
+          // Check for gift on auto-login/refresh as well
+          checkAndShowGift(currentUser.uid);
+
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
+      } else {
+        // User is signed out
+        setUser(null);
+      }
+      // Finished checking auth
+      setIsSessionLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
   const handleLogin = (loggedInUser: UserProfile) => {
     setIsLoginExiting(true);
     setTimeout(() => {
         setUser(loggedInUser);
         setIsLoginExiting(false);
         
-        // CHECK FOR SWIFT GIFT (One-time per browser/device)
-        const hasReceivedGift = localStorage.getItem('hasReceivedSwiftVIP');
-        if (!hasReceivedGift) {
-            setTheme('swift');
-            setShowSwiftGift(true);
-            localStorage.setItem('hasReceivedSwiftVIP', 'true');
+        // Check for gift on manual login
+        if (loggedInUser.uid) {
+            checkAndShowGift(loggedInUser.uid);
         }
     }, 800);
   };
 
-  const handleLogout = () => {
-    setUser(null);
-    setMode(AppMode.HOME);
+  const handleLogout = async () => {
+    try {
+      await signOut(auth); // Sign out from Firebase
+      setUser(null);
+      setMode(AppMode.HOME);
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   const handleUpdateUser = (updatedUser: UserProfile) => {
@@ -426,7 +505,21 @@ const App: React.FC = () => {
       onCloseSwiftGift={() => setShowSwiftGift(false)}
     >
       <InstallPWA theme={theme} />
-      {!user ? (
+      
+      {isSessionLoading ? (
+        // --- LOADING SCREEN ---
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950">
+            <div className={`w-24 h-24 rounded-full bg-white/20 flex items-center justify-center mb-6 shadow-xl border-4 border-slate-100 dark:border-slate-800 ${theme === 'showgirl' ? 'border-yellow-500 shadow-glow-gold' : ''}`}>
+                <span className="text-6xl animate-[bounce_2s_infinite] filter drop-shadow-lg">
+                    {theme === 'xmas' ? '🎅' : theme === 'swift' ? '🐍' : theme === 'blackpink' ? '👑' : theme === 'aespa' ? '👽' : theme === 'rosie' ? '🌹' : theme === 'pkl' ? '🗡️' : theme === 'showgirl' ? '💃' : '🦦'}
+                </span>
+            </div>
+            <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300 font-bold text-lg">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+                <span>Đang tải dữ liệu...</span>
+            </div>
+        </div>
+      ) : !user ? (
         <LoginScreen 
           onLogin={handleLogin} 
           darkMode={darkMode} 

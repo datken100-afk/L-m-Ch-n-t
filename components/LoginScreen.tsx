@@ -1,10 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowRight, GraduationCap, User, Camera, Upload, Loader2, Snowflake, Mail, Lock, Eye, EyeOff, LogIn, ChevronLeft } from 'lucide-react';
+import { ArrowRight, GraduationCap, User, Camera, Upload, Loader2, Snowflake, Mail, Lock, Eye, EyeOff, LogIn, ChevronLeft, KeyRound, CheckCircle } from 'lucide-react';
 import { UserProfile } from '../types';
 import { ThemeType } from '../App';
 import { auth, db } from '../firebaseConfig';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { STUDENT_WHITELIST } from '../data/studentWhitelist';
 
@@ -17,8 +17,8 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, toggleDarkMode, isExiting = false, theme }) => {
-  // Flow State: WELCOME -> AUTH
-  const [step, setStep] = useState<'WELCOME' | 'AUTH'>('WELCOME');
+  // Flow State: WELCOME -> AUTH -> FORGOT
+  const [step, setStep] = useState<'WELCOME' | 'AUTH' | 'FORGOT'>('WELCOME');
 
   // Auth State
   const [isRegistering, setIsRegistering] = useState(false);
@@ -33,6 +33,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
   // UI State
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   // EASTER EGG STATE
@@ -76,7 +77,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
           case 'auth/credential-already-in-use':
               return 'Thông tin đăng nhập đã được sử dụng.';
           default:
-              return `Lỗi đăng nhập: ${errorCode}`;
+              return `Lỗi: ${errorCode}`;
       }
   };
 
@@ -197,6 +198,59 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
     } finally {
         setIsLoading(false);
     }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError('');
+      setSuccessMsg('');
+
+      const trimmedFullName = fullName.trim();
+      const trimmedStudentId = studentId.trim();
+
+      if (!email || !trimmedFullName || !trimmedStudentId) {
+          setError('Vui lòng nhập đủ Email, Họ tên và MSSV để xác minh.');
+          return;
+      }
+
+      setIsLoading(true);
+
+      try {
+          // 1. Query Firestore to find user with this Email
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", email));
+          const querySnapshot = await getDocs(q);
+
+          if (querySnapshot.empty) {
+              setError('Không tìm thấy tài khoản với Email này.');
+              setIsLoading(false);
+              return;
+          }
+
+          // 2. Verify Name and Student ID locally
+          const userData = querySnapshot.docs[0].data();
+          
+          // Case-insensitive comparison
+          const isNameMatch = userData.fullName.toLowerCase() === trimmedFullName.toLowerCase();
+          const isIdMatch = userData.studentId === trimmedStudentId;
+
+          if (!isNameMatch || !isIdMatch) {
+              setError('Thông tin xác minh (Họ tên hoặc MSSV) không khớp với dữ liệu hệ thống.');
+              setIsLoading(false);
+              return;
+          }
+
+          // 3. Send Password Reset Email via Firebase Auth
+          await sendPasswordResetEmail(auth, email);
+          
+          setSuccessMsg('Đã gửi liên kết đặt lại mật khẩu vào Email của bạn. Vui lòng kiểm tra hộp thư (kể cả mục Spam).');
+          
+      } catch (err: any) {
+          console.error("Reset Password Error:", err);
+          setError(translateFirebaseError(err.code));
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -396,6 +450,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
             <p className="text-white/90 mt-3 font-medium">
                 {step === 'WELCOME' 
                     ? "Hệ thống ôn thi Giải phẫu học thông minh" 
+                    : step === 'FORGOT' ? "Khôi phục mật khẩu" 
                     : (isRegistering ? "Tạo tài khoản mới" : "Đăng nhập để tiếp tục")}
             </p>
           </div>
@@ -419,6 +474,112 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
                       <span>Bắt đầu học</span>
                       <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
+             </div>
+          ) : step === 'FORGOT' ? (
+             /* STEP 3: FORGOT PASSWORD SCREEN */
+             <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+                 <button 
+                    onClick={() => { setStep('AUTH'); setError(''); setSuccessMsg(''); }}
+                    className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-6 transition-colors"
+                >
+                     <ChevronLeft className="w-4 h-4" /> Quay lại
+                </button>
+
+                <div className="space-y-4">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                        <p className="text-sm text-blue-800 dark:text-blue-300 leading-relaxed">
+                            Để bảo mật, vui lòng nhập đúng <strong>Họ tên</strong> và <strong>Mã số sinh viên</strong> đã đăng ký để nhận liên kết đặt lại mật khẩu.
+                        </p>
+                    </div>
+
+                    <form onSubmit={handleResetPassword} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-xs tracking-wider">Email đăng nhập</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Mail className="h-5 w-5 text-slate-400" />
+                                </div>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400 ${styles.focusRing}`}
+                                    placeholder="email@domain.com"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-xs tracking-wider">Họ và tên</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <User className="h-5 w-5 text-slate-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400 ${styles.focusRing}`}
+                                    placeholder="Nguyễn Văn A"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase text-xs tracking-wider">Mã số sinh viên</label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <GraduationCap className="h-5 w-5 text-slate-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={studentId}
+                                    onChange={(e) => setStudentId(e.target.value)}
+                                    className={`w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400 ${styles.focusRing}`}
+                                    placeholder="Nhập chính xác MSSV"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        {error && (
+                            <p className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-900/20 py-3 rounded-xl font-medium border border-red-200 dark:border-red-900/50 animate-pulse">
+                                {error}
+                            </p>
+                        )}
+
+                        {successMsg && (
+                            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border border-green-200 dark:border-green-800 flex flex-col items-center text-center gap-2">
+                                <CheckCircle className="w-8 h-8 text-green-500" />
+                                <p className="text-green-700 dark:text-green-300 text-sm font-medium">
+                                    {successMsg}
+                                </p>
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={isLoading || !!successMsg}
+                            className={`w-full bg-gradient-to-r ${styles.btnGradient} text-white font-bold py-4 rounded-xl ${styles.btnShadow} flex items-center justify-center gap-2 group disabled:opacity-80 disabled:cursor-wait transition-all duration-300 transform active:scale-95 mt-4`}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    <span>Đang xác minh...</span>
+                                </>
+                            ) : successMsg ? (
+                                <span>Đã gửi yêu cầu</span>
+                            ) : (
+                                <>
+                                    <span>Xác minh & Gửi Link</span>
+                                    <KeyRound className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
+                    </form>
+                </div>
              </div>
           ) : (
              /* STEP 2: AUTH SCREEN (Login / Register) */
@@ -545,6 +706,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
                             </div>
                         )}
                     </div>
+
+                    {/* FORGOT PASSWORD LINK (Only in Login Mode) */}
+                    {!isRegistering && (
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => { 
+                                    setStep('FORGOT'); 
+                                    setError('');
+                                    // Pre-clear inputs or keep email if typed? Keeping email is better UX.
+                                }}
+                                className={`text-sm font-medium transition-colors ${styles.textLink}`}
+                            >
+                                Quên mật khẩu?
+                            </button>
+                        </div>
+                    )}
 
                     {error && (
                     <p className="text-red-600 text-sm text-center bg-red-50 dark:bg-red-900/20 py-3 rounded-xl font-medium border border-red-200 dark:border-red-900/50 animate-pulse">

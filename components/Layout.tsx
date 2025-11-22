@@ -6,6 +6,7 @@ import { OtterChat } from './OtterChat';
 import { ThemeType } from '../App';
 import { ThemeTransition } from './ThemeTransition';
 import { STORAGE_API_KEY } from '../services/geminiService';
+import { PomodoroTimer } from './PomodoroTimer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -426,6 +427,94 @@ export const Layout: React.FC<LayoutProps> = ({
               };
       }
   };
+
+  // DROPDOWN & PROFILE THEME STYLES
+  const profileTheme = (() => {
+      switch(theme) {
+          case 'xmas': return {
+              trigger: 'bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40 text-red-700 dark:text-red-200 border-red-200 dark:border-red-800',
+              avatar: 'bg-red-100 dark:bg-red-800 text-red-600 dark:text-red-200 border-red-200 dark:border-red-700',
+              label: 'text-red-400 dark:text-red-500',
+              name: 'text-red-700 dark:text-red-200',
+              id: 'text-red-400 dark:text-red-400',
+              editBtn: 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20',
+              apiKeyBtn: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/30',
+              logoutBtn: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+          };
+          case 'swift': return {
+              trigger: 'bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-200 border-purple-200 dark:border-purple-800',
+              avatar: 'bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-200 border-purple-200 dark:border-purple-700',
+              label: 'text-purple-400 dark:text-purple-500',
+              name: 'text-purple-700 dark:text-purple-200',
+              id: 'text-purple-400 dark:text-purple-400',
+              editBtn: 'border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/20',
+              apiKeyBtn: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/30',
+              logoutBtn: 'text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20'
+          };
+          case 'blackpink': return {
+              trigger: 'bg-pink-50 hover:bg-pink-100 dark:bg-pink-900/20 dark:hover:bg-pink-900/40 text-pink-700 dark:text-pink-200 border-pink-200 dark:border-pink-800',
+              avatar: 'bg-pink-100 dark:bg-pink-800 text-pink-600 dark:text-pink-200 border-pink-200 dark:border-pink-700',
+              label: 'text-pink-400 dark:text-pink-500',
+              name: 'text-pink-700 dark:text-pink-200',
+              id: 'text-pink-400 dark:text-pink-400',
+              editBtn: 'border-pink-200 text-pink-600 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-900/20',
+              apiKeyBtn: 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800 dark:hover:bg-pink-900/30',
+              logoutBtn: 'text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:bg-pink-900/20'
+          };
+          case 'aespa': return {
+              trigger: 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800',
+              avatar: 'bg-indigo-100 dark:bg-indigo-800 text-indigo-600 dark:text-indigo-200 border-indigo-200 dark:border-indigo-700',
+              label: 'text-indigo-400 dark:text-indigo-500',
+              name: 'text-indigo-700 dark:text-indigo-200',
+              id: 'text-indigo-400 dark:text-indigo-400',
+              editBtn: 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20',
+              apiKeyBtn: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/30',
+              logoutBtn: 'text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20'
+          };
+          case 'rosie': return {
+              trigger: 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800',
+              avatar: 'bg-rose-100 dark:bg-rose-800 text-rose-600 dark:text-rose-200 border-rose-200 dark:border-rose-700',
+              label: 'text-rose-400 dark:text-rose-500',
+              name: 'text-rose-700 dark:text-rose-200',
+              id: 'text-rose-400 dark:text-rose-400',
+              editBtn: 'border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/20',
+              apiKeyBtn: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/30',
+              logoutBtn: 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20'
+          };
+          case 'pkl': return {
+              trigger: 'bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:hover:bg-cyan-900/40 text-cyan-700 dark:text-cyan-200 border-cyan-200 dark:border-cyan-800',
+              avatar: 'bg-cyan-100 dark:bg-cyan-800 text-cyan-600 dark:text-cyan-200 border-cyan-200 dark:border-cyan-700',
+              label: 'text-cyan-400 dark:text-cyan-500',
+              name: 'text-cyan-700 dark:text-cyan-200',
+              id: 'text-cyan-400 dark:text-cyan-400',
+              editBtn: 'border-cyan-200 text-cyan-600 hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-900/20',
+              apiKeyBtn: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 dark:hover:bg-cyan-900/30',
+              logoutBtn: 'text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-900/20'
+          };
+          case 'showgirl': return {
+              // Gold/Orange Vibe
+              trigger: 'bg-gradient-to-r from-orange-100 to-amber-100 dark:from-orange-900/40 dark:to-amber-900/40 text-orange-800 dark:text-orange-100 border-orange-200 dark:border-orange-700',
+              avatar: 'bg-orange-100 dark:bg-orange-800 text-orange-600 dark:text-orange-200 border-orange-200 dark:border-orange-700 ring-2 ring-orange-100 dark:ring-orange-900',
+              label: 'text-orange-400 dark:text-orange-500',
+              name: 'text-orange-800 dark:text-orange-100',
+              id: 'text-orange-500 dark:text-orange-400',
+              editBtn: 'border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/20',
+              apiKeyBtn: 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border-orange-200 hover:from-orange-100 hover:to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20 dark:text-orange-300 dark:border-orange-800',
+              logoutBtn: 'text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+          };
+          default: return {
+              // Blue/Slate Default
+              trigger: 'bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700',
+              avatar: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600',
+              label: 'text-slate-400',
+              name: 'text-slate-900 dark:text-white',
+              id: 'text-slate-500 dark:text-slate-400',
+              editBtn: 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800',
+              apiKeyBtn: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/30',
+              logoutBtn: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+          };
+      }
+  })();
 
   const styles = getThemeStyles();
 
@@ -1067,6 +1156,9 @@ export const Layout: React.FC<LayoutProps> = ({
                 <Heart className="w-5 h-5" />
             </button>
 
+            {/* Pomodoro Timer */}
+            <PomodoroTimer theme={theme} />
+
             {/* Theme Switcher */}
             <div className="relative" ref={themeDropdownRef}>
                 <button 
@@ -1149,19 +1241,19 @@ export const Layout: React.FC<LayoutProps> = ({
             >
                {/* Unified Trigger Card */}
                <div 
-                  className={`flex items-center gap-3 px-3 py-1.5 rounded-2xl liquid-icon cursor-pointer bg-transparent transition-all duration-300 border border-transparent ${theme === 'showgirl' ? 'hover:border-yellow-500/50' : 'hover:border-amber-100 dark:hover:border-amber-900'}`}
-                  style={{ '--glow-color': 'rgba(245, 158, 11, 0.5)' } as React.CSSProperties}
+                  className={`flex items-center gap-3 px-3 py-1.5 rounded-2xl liquid-icon cursor-pointer transition-all duration-300 border ${profileTheme.trigger}`}
+                  style={{ '--glow-color': theme === 'showgirl' ? 'rgba(234, 179, 8, 0.5)' : 'rgba(245, 158, 11, 0.5)' } as React.CSSProperties}
                >
                   <div className="hidden md:block text-right">
-                      <p className={`text-sm font-bold transition-colors ${theme === 'showgirl' ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{user.fullName}</p>
-                      <p className="text-xs text-slate-400 transition-colors">{user.studentId}</p>
+                      <p className="text-sm font-bold transition-colors">{user.fullName}</p>
+                      <p className={`text-xs transition-colors opacity-80 ${theme === 'showgirl' ? 'text-white' : ''}`}>{user.studentId}</p>
                   </div>
-                  <div className="text-slate-600 dark:text-slate-300 transition-colors relative">
+                  <div className="transition-colors relative">
                       {user.avatar ? (
                         <img 
                           src={user.avatar} 
                           alt="Profile" 
-                          className={`w-9 h-9 rounded-full object-cover border ${theme === 'showgirl' ? 'border-yellow-500 shadow-glow-gold' : 'border-slate-200 dark:border-slate-700'}`}
+                          className={`w-9 h-9 rounded-full object-cover border ${theme === 'showgirl' ? 'border-yellow-500 shadow-glow-gold' : 'border-white/20'}`}
                         />
                       ) : (
                         <UserCircle className="w-9 h-9" />
@@ -1175,7 +1267,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   className={`absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 transform transition-all duration-300 origin-top-right overflow-hidden ${isProfileOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'}`}
                >
                   <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Thông tin cá nhân</p>
+                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${profileTheme.label}`}>Thông tin cá nhân</p>
                     <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                         <Keyboard className="w-3 h-3" /> Alt+U
                     </span>
@@ -1191,7 +1283,7 @@ export const Layout: React.FC<LayoutProps> = ({
                                     className="relative group cursor-pointer"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-amber-500 relative">
+                                    <div className={`w-16 h-16 rounded-full overflow-hidden border-2 relative ${profileTheme.avatar.split(' ')[0].replace('bg-', 'border-')}`}>
                                         {editAvatar ? (
                                             <img src={editAvatar} alt="Edit" className="w-full h-full object-cover" />
                                         ) : (
@@ -1241,19 +1333,19 @@ export const Layout: React.FC<LayoutProps> = ({
                         <div className="space-y-4">
                             {/* User Info */}
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border border-slate-100 dark:border-slate-700 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border ${profileTheme.avatar}`}>
                                     {user.avatar ? <img src={user.avatar} alt="User" className="w-full h-full object-cover" /> : <UserCircle className="w-7 h-7" />}
                                 </div>
                                 <div>
-                                    <p className="font-bold text-slate-900 dark:text-white">{user.fullName}</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{user.studentId}</p>
+                                    <p className={`font-bold ${profileTheme.name}`}>{user.fullName}</p>
+                                    <p className={`text-sm ${profileTheme.id}`}>{user.studentId}</p>
                                 </div>
                             </div>
                             
                             {/* Actions */}
                             <button 
                                 onClick={() => { setIsEditing(true); setEditName(user.fullName); setEditId(user.studentId); setEditAvatar(user.avatar); }}
-                                className="w-full py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+                                className={`w-full py-2 border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${profileTheme.editBtn}`}
                             >
                                 <Settings className="w-4 h-4" /> Chỉnh sửa thông tin
                             </button>
@@ -1261,7 +1353,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             {/* API Key Config */}
                             <button 
                                 onClick={() => setShowApiKeyModal(true)}
-                                className="w-full py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/50 rounded-xl text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors flex items-center justify-center gap-2"
+                                className={`w-full py-2 border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${profileTheme.apiKeyBtn}`}
                             >
                                 <Key className="w-4 h-4" /> Cấu hình API Key
                             </button>
@@ -1275,7 +1367,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
                     <button 
                         onClick={onLogout}
-                        className="w-full py-2 px-4 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                        className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${profileTheme.logoutBtn}`}
                     >
                         <LogOut className="w-4 h-4" /> Đăng xuất
                     </button>

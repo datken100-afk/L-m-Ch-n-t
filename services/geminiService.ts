@@ -229,20 +229,26 @@ export const generateStationQuestionFromImage = async (
     const ai = getAI();
 
     const systemInstruction = `
-        Bạn là trạm trưởng thi chạy trạm giải phẫu (Spot Test).
+        Bạn là trạm trưởng thi chạy trạm giải phẫu (Spot Test) cực kỳ nghiêm khắc.
         Nhiệm vụ: Nhìn hình ảnh lát cắt hoặc mô hình giải phẫu và đặt 1 câu hỏi định danh cấu trúc (VD: "Chi tiết số 1 là gì?", "Cấu trúc mũi tên chỉ vào?").
         
         Bối cảnh chương học: "${topic}".
-        ${detailedTopic ? `Yêu cầu đặc biệt: Tập trung vào các chi tiết liên quan đến "${detailedTopic}".` : ""}
+        ${detailedTopic ? `
+        *** CHẾ ĐỘ SIÊU KHẮT KHE (SUPER STRICT MODE) ***
+        Chủ đề yêu cầu chi tiết: "${detailedTopic}".
+        1. Bạn phải soi kỹ hình ảnh. Chỉ khi hình ảnh CÓ CHỨA cấu trúc thuộc đúng chủ đề "${detailedTopic}" thì mới đặt câu hỏi.
+        2. Nếu hình ảnh là giải phẫu nhưng KHÔNG CÓ cấu trúc nào thuộc chủ đề "${detailedTopic}" (ví dụ: yêu cầu "tim" nhưng hình là "phổi"), BẮT BUỘC trả về isValid: false.
+        3. Tuyệt đối KHÔNG cố gắng đặt câu hỏi về chủ đề khác để "lấp chỗ trống". Thà bỏ qua hình còn hơn đặt sai chủ đề.
+        ` : ""}
 
-        Nếu hình ảnh chứa các chi tiết giải phẫu rõ ràng (số, mũi tên, hoặc cấu trúc đặc trưng), hãy tạo câu hỏi.
-        Nếu hình ảnh KHÔNG RÕ RÀNG, quá mờ, hoặc KHÔNG PHẢI GIẢI PHẪU, hãy trả về isValid: false.
+        Nếu hình ảnh chứa các chi tiết giải phẫu rõ ràng (số, mũi tên, hoặc cấu trúc đặc trưng)${detailedTopic ? ` VÀ liên quan mật thiết đến "${detailedTopic}"` : ""}, hãy tạo câu hỏi.
+        Nếu hình ảnh KHÔNG RÕ RÀNG, quá mờ, hoặc KHÔNG PHẢI GIẢI PHẪU${detailedTopic ? `, hoặc KHÔNG CÓ chi tiết thuộc "${detailedTopic}"` : ""}, hãy trả về isValid: false.
     `;
 
     const schema: Schema = {
         type: Type.OBJECT,
         properties: {
-            isValid: { type: Type.BOOLEAN, description: "True nếu ảnh là giải phẫu rõ ràng" },
+            isValid: { type: Type.BOOLEAN, description: "True nếu ảnh chứa cấu trúc giải phẫu rõ ràng và ĐÚNG chủ đề yêu cầu." },
             questions: {
                 type: Type.ARRAY,
                 items: {
@@ -268,7 +274,7 @@ export const generateStationQuestionFromImage = async (
                 role: 'user',
                 parts: [
                     { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } },
-                    { text: `Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này${detailedTopic ? ` liên quan đến ${detailedTopic}` : ""}.` }
+                    { text: `Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này${detailedTopic ? ` CHỈ LIÊN QUAN ĐẾN ${detailedTopic}` : ""}.` }
                 ]
             },
             config: {

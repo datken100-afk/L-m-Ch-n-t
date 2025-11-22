@@ -255,7 +255,10 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
           // 2. Determine Range
           const section = GRAYS_SECTIONS.find(s => s.id === selectedSectionId) || GRAYS_SECTIONS[0];
           // Get more candidates than needed
-          const pagesToPick = getRandomPages(pdf.numPages, questionCount, section.range[0], section.range[1]);
+          // Increase pool size significantly if detailed topic is active to account for higher rejection rate
+          // Stricter topic = High Rejection = More Pages to Scan
+          const poolSize = detailedTopic ? questionCount * 5 : questionCount;
+          const pagesToPick = getRandomPages(pdf.numPages, poolSize, section.range[0], section.range[1]);
           
           const newStations: StationItem[] = [];
           let processedCount = 0;
@@ -290,7 +293,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
           }
 
           if (newStations.length === 0) {
-              throw new Error("Không tìm thấy hình ảnh giải phẫu phù hợp trong các trang đã chọn. Hãy thử chọn phần khác hoặc file khác.");
+              throw new Error(`Không tìm thấy hình ảnh phù hợp với chủ đề "${detailedTopic || selectedSectionId}". Hãy thử chọn phần khác hoặc chủ đề rộng hơn.`);
           }
 
           setStations(newStations);
@@ -508,17 +511,18 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                  {selectedSectionId !== 'all' && (
                     <div className="mb-8 animate-in slide-in-from-top-2 fade-in">
                         <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wide flex items-center gap-2">
-                            <Search className="w-4 h-4" /> Bước 2.5: Chủ đề chi tiết (Tùy chọn)
+                            <Search className="w-4 h-4" /> Bước 2.5: Chủ đề chi tiết (Chế độ Siêu Khắt Khe)
                         </label>
                         <input
                             type="text"
                             value={detailedTopic}
                             onChange={(e) => setDetailedTopic(e.target.value)}
-                            placeholder={`VD: Xương sọ, Cơ vùng mặt, Thần kinh sọ... (Thuộc ${GRAYS_SECTIONS.find(s => s.id === selectedSectionId)?.name})`}
+                            placeholder={`VD: Thần kinh, Mạch máu... (AI sẽ bỏ qua ảnh không chứa cấu trúc này)`}
                             className={`w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 outline-none transition-all text-lg font-medium text-slate-900 dark:text-white ${themeStyle.inputFocus}`}
                          />
-                         <p className="text-xs text-slate-500 mt-2 ml-1">
-                             Rái cá sẽ ưu tiên tìm các hình ảnh và tạo câu hỏi liên quan đến chủ đề này.
+                         <p className="text-xs text-slate-500 mt-2 ml-1 flex items-center gap-1">
+                             <AlertCircle className="w-3 h-3 text-amber-500" />
+                             <b>Lưu ý:</b> Đây là chế độ lọc "Siêu Khắt Khe". AI sẽ loại bỏ rất nhiều hình ảnh không liên quan trực tiếp. Quá trình tạo đề có thể lâu hơn.
                          </p>
                     </div>
                  )}
