@@ -32,11 +32,34 @@
                 800: '#1e293b',
                 900: '#0f172a',
                 950: '#020617',
+              },
+              gold: {
+                100: '#fef9c3',
+                300: '#fde047',
+                400: '#facc15',
+                500: '#eab308',
+                600: '#ca8a04',
+                700: '#a16207',
               }
             },
             boxShadow: {
               'glow-blue': '0 0 20px rgba(14, 165, 233, 0.5)',
               'glow-purple': '0 0 20px rgba(168, 85, 247, 0.5)',
+              'glow-gold': '0 0 25px rgba(234, 179, 8, 0.4)',
+            },
+            animation: {
+              'spotlight': 'spotlight 4s ease-in-out infinite alternate',
+              'shimmer': 'shimmer 2s linear infinite',
+            },
+            keyframes: {
+              spotlight: {
+                '0%': { transform: 'rotate(15deg)', opacity: '0.5' },
+                '100%': { transform: 'rotate(-15deg)', opacity: '0.8' },
+              },
+              shimmer: {
+                '0%': { backgroundPosition: '200% 0' },
+                '100%': { backgroundPosition: '-200% 0' }
+              }
             }
           }
         }
@@ -116,6 +139,9 @@
       }
       .text-glow-white {
         text-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
+      }
+      .text-glow-gold {
+        text-shadow: 0 0 15px rgba(234, 179, 8, 0.8), 0 0 30px rgba(234, 179, 8, 0.4);
       }
 
       /* Button Glow Effect */
@@ -286,6 +312,52 @@
           0 0 15px 2px rgba(224, 242, 254, 0.9), /* Moonlight */
           0 0 30px 8px rgba(224, 242, 254, 0.4), /* Halo */
           inset 0 0 4px rgba(255, 255, 255, 0.8);
+      }
+
+      /* --- SHOWGIRL VIP THEME EXTENSIONS --- */
+      
+      /* Gold Text Gradient */
+      .text-gradient-gold {
+        background: linear-gradient(to bottom, #fef9c3 0%, #eab308 50%, #a16207 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+      }
+      
+      /* Deep Showgirl Background */
+      .bg-showgirl-depth {
+        background: radial-gradient(circle at 50% 0%, #115e59 0%, #042f2e 40%, #020617 100%);
+      }
+
+      /* Spotlight Beams */
+      .spotlight-beam {
+        position: fixed;
+        top: 0;
+        width: 100px;
+        height: 120vh;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 80%);
+        filter: blur(20px);
+        pointer-events: none;
+        transform-origin: top center;
+        z-index: 0;
+      }
+
+      /* Stage Curtain Gradient */
+      .stage-curtain {
+         background: linear-gradient(90deg, 
+            #0f172a 0%, 
+            #134e4a 10%, 
+            #0f172a 20%, 
+            #134e4a 30%, 
+            #0f172a 40%, 
+            #134e4a 50%, 
+            #0f172a 60%, 
+            #134e4a 70%, 
+            #0f172a 80%, 
+            #134e4a 90%, 
+            #0f172a 100%
+         );
+         opacity: 0.3;
       }
 
       /* --- ANIMATIONS --- */

@@ -104,16 +104,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
         if (userDoc.exists()) {
             const userData = userDoc.data();
             onLogin({
+                uid: userCredential.user.uid,
                 fullName: userData.fullName,
                 studentId: userData.studentId,
-                avatar: userData.avatar || undefined
+                avatar: userData.avatar || undefined,
+                isVipShowgirl: userData.isVipShowgirl || false // Retrieve VIP status
             });
         } else {
              // Fallback if user exists in Auth but not in Firestore (Unlikely but safe)
              onLogin({
+                uid: userCredential.user.uid,
                 fullName: userCredential.user.displayName || email.split('@')[0],
                 studentId: "N/A",
-                avatar: undefined
+                avatar: undefined,
+                isVipShowgirl: false
             });
         }
 
@@ -152,8 +156,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
 
     try {
         // --- 2. CHECK FOR DUPLICATE STUDENT ID IN FIRESTORE ---
-        // Note: This requires Firestore rules allowing read access to users collection for unauthenticated users 
-        // OR this check will fail if rules are strict. Assuming rules allow basic read for validation.
         const usersRef = collection(db, "users");
         const q = query(usersRef, where("studentId", "==", trimmedStudentId));
         const querySnapshot = await getDocs(q);
@@ -170,10 +172,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
 
         // --- 4. Save Extra Info to Firestore ---
         const newUser = {
-            fullName: trimmedFullName, // Store the entered name (formatting might differ slightly but keys matched)
+            fullName: trimmedFullName, 
             studentId: trimmedStudentId,
             email: email,
             avatar: avatar || null,
+            isVipShowgirl: false, // Default to not VIP
             createdAt: new Date().toISOString()
         };
 
@@ -181,9 +184,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
         
         // --- 5. Auto Login ---
         onLogin({
+            uid: uid,
             fullName: newUser.fullName,
             studentId: newUser.studentId,
             avatar: newUser.avatar || undefined,
+            isVipShowgirl: false
         });
 
     } catch (err: any) {

@@ -1,12 +1,15 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Save, Trash2, Edit, Play, RotateCw, Layers, ChevronLeft, ChevronRight, StickyNote, LayoutGrid, BrainCircuit, Clock, Calendar, BarChart3, CheckCircle2, ThumbsUp, ThumbsDown, Hand } from 'lucide-react';
+import { ArrowRight, Plus, Save, Trash2, Edit, Play, RotateCw, Layers, ChevronLeft, ChevronRight, StickyNote, LayoutGrid, BrainCircuit, Clock, Calendar, BarChart3, CheckCircle2, ThumbsUp, ThumbsDown, Hand, Loader2 } from 'lucide-react';
 import { ThemeType } from '../App';
-import { FlashcardDeck, Flashcard, FlashcardSRData } from '../types';
+import { FlashcardDeck, Flashcard, FlashcardSRData, UserProfile } from '../types';
+import { db } from '../firebaseConfig';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
 interface FlashcardModeProps {
     onBack: () => void;
     theme: ThemeType;
+    user: UserProfile;
 }
 
 type ViewState = 'LIST' | 'EDITOR' | 'STUDY';
@@ -20,10 +23,11 @@ const SR_GRADES = {
     EASY: 4
 };
 
-export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) => {
+export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, user }) => {
     const [view, setView] = useState<ViewState>('LIST');
     const [decks, setDecks] = useState<FlashcardDeck[]>([]);
     const [activeDeck, setActiveDeck] = useState<FlashcardDeck | null>(null);
+    const [loading, setLoading] = useState(false);
 
     // Editor State
     const [deckTitle, setDeckTitle] = useState('');
@@ -45,22 +49,47 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) =
     const dragStartRef = useRef<{ x: number, y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Load Decks from LocalStorage
+    // Load Decks from Firestore
     useEffect(() => {
-        const saved = localStorage.getItem('otter_flashcards');
-        if (saved) {
+        const fetchDecks = async () => {
+            if (!user.uid) return;
+            setLoading(true);
             try {
-                setDecks(JSON.parse(saved));
+                const decksRef = collection(db, "users", user.uid, "flashcards");
+                const snapshot = await getDocs(decksRef);
+                const loadedDecks: FlashcardDeck[] = snapshot.docs.map(doc => doc.data() as FlashcardDeck);
+                // Sort by createdAt desc
+                loadedDecks.sort((a, b) => b.createdAt - a.createdAt);
+                setDecks(loadedDecks);
             } catch (e) {
-                console.error("Failed to load flashcards", e);
+                console.error("Failed to load flashcards from Firestore", e);
+            } finally {
+                setLoading(false);
             }
-        }
-    }, []);
+        };
 
-    // Save Decks to LocalStorage
-    const saveDecksToStorage = (newDecks: FlashcardDeck[]) => {
-        setDecks(newDecks);
-        localStorage.setItem('otter_flashcards', JSON.stringify(newDecks));
+        fetchDecks();
+    }, [user.uid]);
+
+    // --- HELPER: FIRESTORE OPERATIONS ---
+    const saveDeckToCloud = async (deck: FlashcardDeck) => {
+        if (!user.uid) return;
+        try {
+             await setDoc(doc(db, "users", user.uid, "flashcards", deck.id), deck);
+        } catch (e) {
+            console.error("Error saving deck to cloud", e);
+            alert("Lỗi lưu dữ liệu! Vui lòng kiểm tra kết nối mạng.");
+        }
+    };
+
+    const deleteDeckFromCloud = async (deckId: string) => {
+        if (!user.uid) return;
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "flashcards", deckId));
+        } catch (e) {
+             console.error("Error deleting deck from cloud", e);
+             alert("Lỗi xóa dữ liệu!");
+        }
     };
 
     const getThemeStyles = () => {
@@ -215,7 +244,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) =
     const handleDeleteDeck = (id: string) => {
         if (confirm("Bạn có chắc muốn xóa bộ thẻ này không?")) {
             const newDecks = decks.filter(d => d.id !== id);
-            saveDecksToStorage(newDecks);
+            setDecks(newDecks); // Update UI
+            deleteDeckFromCloud(id); // Update Cloud
         }
     };
 
@@ -239,10 +269,11 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) =
         if (activeDeck) {
             newDecks = decks.map(d => d.id === activeDeck.id ? newDeck : d);
         } else {
-            newDecks = [...decks, newDeck];
+            newDecks = [newDeck, ...decks];
         }
         
-        saveDecksToStorage(newDecks);
+        setDecks(newDecks); // Update UI immediately
+        saveDeckToCloud(newDeck); // Save to Cloud
         setView('LIST');
     };
 
@@ -297,11 +328,16 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) =
             srData: newSRData
         };
         
-        // Update Deck in State & Storage
+        // Update Deck Object
         const updatedDeck = { ...activeDeck, cards: updatedCards };
         setActiveDeck(updatedDeck);
+        
+        // Update UI State
         const newDecks = decks.map(d => d.id === updatedDeck.id ? updatedDeck : d);
-        saveDecksToStorage(newDecks);
+        setDecks(newDecks);
+
+        // Sync to Cloud
+        saveDeckToCloud(updatedDeck);
 
         // Update Session Stats
         setSessionStats(prev => ({
@@ -410,7 +446,12 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme }) =
                 </div>
             </div>
 
-            {decks.length === 0 ? (
+            {loading ? (
+                <div className="text-center py-20">
+                     <Loader2 className={`w-10 h-10 animate-spin mx-auto mb-4 ${styles.accent}`} />
+                     <p className="text-slate-500 dark:text-slate-400">Đang tải dữ liệu từ Cloud...</p>
+                </div>
+            ) : decks.length === 0 ? (
                 <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
                     <div className={`w-20 h-20 mx-auto rounded-full ${styles.bgSoft} flex items-center justify-center mb-4`}>
                         <StickyNote className={`w-10 h-10 ${styles.accent}`} />

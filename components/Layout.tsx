@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle } from 'lucide-react';
+import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle, Lock, CheckCircle, Star } from 'lucide-react';
 import { UserProfile } from '../types';
 import { OtterChat } from './OtterChat';
 import { ThemeType } from '../App';
@@ -45,6 +45,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [apiKeySaved, setApiKeySaved] = useState(false);
 
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   // Animation Refs
   const fallingContainerRef = useRef<HTMLDivElement>(null);
   
@@ -82,8 +85,6 @@ export const Layout: React.FC<LayoutProps> = ({
           localStorage.setItem(STORAGE_API_KEY, apiKeyInput.trim());
           setApiKeySaved(true);
           setShowApiKeyModal(false);
-          // Optional: Reload page to ensure fresh service instances? 
-          // Not needed due to dynamic getAI() in service, but good for UX feedback
           alert("Đã lưu API Key thành công! Bạn có thể sử dụng ngay.");
       } else {
           localStorage.removeItem(STORAGE_API_KEY);
@@ -100,6 +101,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const handleThemeChange = (newTheme: ThemeType) => {
       if (newTheme === theme) {
+          setIsThemeDropdownOpen(false);
+          return;
+      }
+
+      // CHECK LOCK STATUS FOR SHOWGIRL
+      if (newTheme === 'showgirl' && !user.isVipShowgirl) {
+          setShowPaymentModal(true);
           setIsThemeDropdownOpen(false);
           return;
       }
@@ -220,7 +228,8 @@ export const Layout: React.FC<LayoutProps> = ({
        } else if (theme === 'pkl') {
            item.style.filter = 'drop-shadow(0 0 5px rgba(6, 182, 212, 0.6))'; // Cyan/Blue glow
        } else if (theme === 'showgirl') {
-           item.style.filter = 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))'; // Orange/Teal glow
+           item.style.filter = 'drop-shadow(0 0 8px rgba(234, 179, 8, 0.6))'; // Gold glow
+           item.style.textShadow = '0 0 10px rgba(234, 179, 8, 0.8)';
        } else {
            item.style.textShadow = '0 0 5px rgba(255,255,255,0.5), 0 0 2px rgba(0,0,0,0.1)';
        }
@@ -331,7 +340,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-red-500 to-green-600',
                   icon: '🎅',
                   subIcon: '🎄',
-                  nameColor: 'text-red-600'
+                  nameColor: 'text-red-600',
+                  badgeBg: 'bg-red-600 text-white'
               };
           case 'swift':
               return {
@@ -339,7 +349,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-pink-400 via-purple-400 to-indigo-400',
                   icon: '🐍',
                   subIcon: '🧣',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600'
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600',
+                  badgeBg: 'bg-white text-purple-600 font-bold border border-purple-200'
               };
           case 'blackpink':
               return {
@@ -347,7 +358,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-pink-500 via-fuchsia-500 to-rose-500 shadow-[0_0_40px_rgba(236,72,153,0.8)]', 
                   icon: '👑',
                   subIcon: '🖤',
-                  nameColor: 'text-white drop-shadow-[0_0_15px_rgba(236,72,153,1)]' 
+                  nameColor: 'text-white drop-shadow-[0_0_15px_rgba(236,72,153,1)]',
+                  badgeBg: 'bg-pink-500 text-white font-bold border border-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.5)]'
               };
           case 'aespa':
               return {
@@ -355,7 +367,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-slate-300 via-purple-300 to-indigo-400 shadow-[0_0_30px_rgba(167,139,250,0.8)]', 
                   icon: '🦾',
                   subIcon: '✨',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-purple-200 to-slate-200 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]'
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-purple-200 to-slate-200 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]',
+                  badgeBg: 'bg-slate-900 text-purple-400 border border-purple-500'
               };
           case 'rosie':
               return {
@@ -363,7 +376,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-rose-400 via-red-500 to-rose-600 shadow-[0_0_30px_rgba(225,29,72,0.5)]',
                   icon: '🌹',
                   subIcon: '🍷',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-red-600'
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-red-600',
+                  badgeBg: 'bg-rose-100 text-rose-600 font-bold border border-rose-400'
               };
           case 'pkl':
               return {
@@ -371,15 +385,17 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-slate-700 via-cyan-600 to-slate-800 shadow-[0_0_40px_rgba(6,182,212,0.5)]',
                   icon: '🗡️',
                   subIcon: '🦢',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-white to-cyan-200'
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-white to-cyan-200',
+                  badgeBg: 'bg-slate-800 text-cyan-400 font-bold border border-cyan-500'
               };
           case 'showgirl':
               return {
-                  color: 'rgba(249, 115, 22, 0.8)', 
-                  gradient: 'from-teal-500 via-orange-400 to-teal-600 shadow-[0_0_40px_rgba(20,184,166,0.6)]',
+                  color: 'rgba(234, 179, 8, 0.9)', 
+                  gradient: 'from-teal-900 via-slate-900 to-orange-900 shadow-[0_0_60px_rgba(234,179,8,0.3)] border-b border-yellow-500/30',
                   icon: '💃',
                   subIcon: '💎',
-                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-orange-400 to-teal-500 drop-shadow-lg'
+                  nameColor: 'text-gradient-gold text-glow-gold',
+                  badgeBg: 'bg-gradient-to-r from-teal-500 to-orange-500 text-white font-bold shadow-md'
               };
           default:
               return {
@@ -387,7 +403,8 @@ export const Layout: React.FC<LayoutProps> = ({
                   gradient: 'from-amber-400 to-orange-600',
                   icon: '🦦',
                   subIcon: null,
-                  nameColor: 'text-amber-500'
+                  nameColor: 'text-amber-500',
+                  badgeBg: ''
               };
       }
   };
@@ -402,19 +419,107 @@ export const Layout: React.FC<LayoutProps> = ({
       if (theme === 'aespa') return { text: "SUPERNOVA!", icon: '🪐', img: null, bg: 'bg-slate-900', border: 'border-purple-500 text-purple-500' };
       if (theme === 'rosie') return { text: "APT. APT.!", icon: '⚡', img: null, bg: 'bg-rose-950', border: 'border-rose-500 text-rose-500' };
       if (theme === 'pkl') return { text: "KHÓC BLOCK", icon: '⚔️', img: null, bg: 'bg-slate-800', border: 'border-cyan-500 text-cyan-500' };
-      if (theme === 'showgirl') return { text: "OPALITE", icon: '💎', img: null, bg: 'bg-gradient-to-br from-teal-100 to-orange-100', border: 'border-orange-500 text-orange-600' };
+      if (theme === 'showgirl') return { text: "OPALITE", icon: '💎', img: null, bg: 'bg-gradient-to-br from-teal-900 to-orange-900', border: 'border-yellow-500 text-yellow-500' };
       return null;
   };
   const egg = getEasterEggContent();
 
+  // VietQR Link Generation
+  // Bank: MB (Military Bank)
+  // Account: 0766377925
+  // Name: LAM CHAN DAT
+  const qrAmount = 50000;
+  const qrContent = `${user.studentId} MUA GIAO DIEN SHOWGIRL`;
+  const qrUrl = `https://img.vietqr.io/image/MB-0766377925-compact.png?amount=${qrAmount}&addInfo=${encodeURIComponent(qrContent)}&accountName=LAM%20CHAN%20DAT`;
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative">
+    <div className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative ${theme === 'showgirl' ? 'bg-showgirl-depth' : ''}`}>
       
+      {/* SHOWGIRL VIP BACKGROUND FX */}
+      {theme === 'showgirl' && (
+        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            {/* Left Spotlight */}
+            <div className="spotlight-beam left-1/4 -ml-12 animate-spotlight"></div>
+            {/* Right Spotlight */}
+            <div className="spotlight-beam right-1/4 -mr-12 animate-spotlight" style={{ animationDelay: '-2s' }}></div>
+            
+            {/* Stage Curtain Overlay */}
+            <div className="absolute inset-0 stage-curtain mix-blend-overlay"></div>
+            
+            {/* Ambient Glow */}
+            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-teal-900/20 to-transparent"></div>
+        </div>
+      )}
+
       {/* TRANSITION OVERLAY */}
       <ThemeTransition stage={transitionStage} targetTheme={pendingTheme} />
 
       {/* FALLING ITEMS OVERLAY (Only if NOT Default) */}
       {theme !== 'default' && <div ref={fallingContainerRef} className="xmas-container"></div>}
+
+      {/* PAYMENT MODAL FOR SHOWGIRL */}
+      {showPaymentModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-orange-200 dark:border-orange-800 animate-in zoom-in-95 relative overflow-hidden">
+                  {/* Background Decoration */}
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 via-orange-500 to-teal-500"></div>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
+                  
+                  <div className="text-center mb-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-teal-100 to-orange-100 dark:from-slate-800 dark:to-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white dark:border-slate-700 shadow-lg">
+                          <span className="text-4xl animate-[bounce_2s_infinite]">💃</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
+                          Mở khóa giao diện Showgirl
+                      </h2>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">
+                          Trở thành VIP để sở hữu giao diện độc quyền này!
+                      </p>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-700 mb-6 flex flex-col items-center">
+                       <div className="bg-white p-2 rounded-xl shadow-sm mb-4 border border-slate-100">
+                           <img 
+                                src={qrUrl} 
+                                alt="VietQR Payment" 
+                                className="w-48 h-48 object-contain"
+                           />
+                       </div>
+                       <div className="text-center space-y-2 w-full">
+                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">Hướng dẫn thanh toán</p>
+                           <div className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 p-3 rounded-lg border border-dashed border-slate-300 dark:border-slate-600">
+                               <p>Chuyển khoản: <strong className="text-orange-600 dark:text-orange-400">50.000đ</strong></p>
+                               <p>Nội dung: <strong className="font-mono bg-slate-100 dark:bg-slate-700 px-1 rounded">{user.studentId} - MUA GIAO DIEN SHOWGIRL</strong></p>
+                           </div>
+                           <p className="text-xs text-slate-500 italic mt-2">
+                               Sau khi chuyển khoản, vui lòng chụp màn hình và gửi Zalo cho Admin để được duyệt.
+                           </p>
+                           <p className="text-xs text-red-600 dark:text-red-400 font-medium italic mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                               Lưu ý: Vì hệ thống duyệt thủ công, vui lòng chờ từ 15 - 30 phút (hoặc tối đa 24h) sau khi chuyển khoản để tài khoản được nâng cấp. Đừng lo lắng nhé!
+                           </p>
+                       </div>
+                  </div>
+
+                  <div className="space-y-3">
+                      <button 
+                          onClick={() => {
+                              setShowPaymentModal(false);
+                              alert("Vui lòng chờ Admin duyệt trong giây lát. Bạn có thể liên hệ qua Zalo để được hỗ trợ nhanh hơn.");
+                          }}
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-teal-500 to-orange-500 text-white font-bold shadow-lg hover:shadow-orange-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      >
+                          <CheckCircle className="w-5 h-5" /> Tôi đã chuyển khoản
+                      </button>
+                      <button 
+                          onClick={() => setShowPaymentModal(false)}
+                          className="w-full py-3 rounded-xl text-slate-500 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                          Đóng
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* API KEY MODAL */}
       {showApiKeyModal && (
@@ -638,26 +743,118 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
 
-      {/* ... Focus Mode ... */}
-      {/* (Focus mode code truncated for brevity, it's the same as original) */}
+      {/* Focus Mode (Full Screen Overlay) */}
+      {isOtterMode && (
+        <div 
+            className={`fixed inset-0 z-[200] flex flex-col items-center justify-center animate-in zoom-in duration-300 cursor-pointer
+                ${theme === 'showgirl' ? 'bg-slate-900/95' : 'bg-slate-900/90 backdrop-blur-xl'}
+            `}
+            onClick={() => setIsOtterMode(false)}
+        >
+            {/* Showgirl: Glitter/Sparkle Effects in Focus Mode */}
+            {theme === 'showgirl' && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    {/* Stardust texture fallback */}
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-30 animate-pulse"></div>
+                    
+                    {/* CSS Generated Sparkles */}
+                    {[...Array(15)].map((_, i) => (
+                        <div 
+                            key={i}
+                            className="absolute animate-pulse"
+                            style={{
+                                top: `${Math.random() * 100}%`,
+                                left: `${Math.random() * 100}%`,
+                                animationDuration: `${Math.random() * 2 + 1}s`,
+                                animationDelay: `${Math.random()}s`
+                            }}
+                        >
+                            <Sparkles className={`text-yellow-200 w-${Math.random() > 0.5 ? '4' : '6'} h-${Math.random() > 0.5 ? '4' : '6'}`} />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <div className={`relative transform transition-transform hover:scale-110 duration-300 ${theme === 'showgirl' ? 'animate-[bounce_3s_infinite]' : 'animate-bounce'}`}>
+                <div className={`w-40 h-40 rounded-[2rem] flex items-center justify-center shadow-2xl border-4 relative 
+                    ${theme === 'showgirl' 
+                        ? 'bg-gradient-to-br from-teal-900 to-orange-900 border-yellow-500 shadow-[0_0_60px_rgba(234,179,8,0.6)]' 
+                        : `bg-gradient-to-br ${styles.gradient} border-white/20`
+                    }`}
+                >
+                    <span className="text-8xl drop-shadow-lg select-none">
+                        {styles.icon}
+                    </span>
+                    {theme === 'showgirl' && (
+                         <div className="absolute -top-6 -right-6 animate-spin-slow">
+                             <Sparkles className="w-12 h-12 text-yellow-400 drop-shadow-lg" />
+                         </div>
+                    )}
+                </div>
+                {/* Glow effect */}
+                <div className={`absolute inset-0 blur-3xl -z-10 opacity-50 ${theme === 'showgirl' ? 'bg-yellow-500' : 'bg-white'}`}></div>
+            </div>
+            
+            <h1 className={`mt-8 text-5xl font-black text-center tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : 'text-white drop-shadow-lg'}`}>
+                AnatomyOtter
+            </h1>
+            <p className={`mt-2 font-mono text-lg tracking-widest uppercase ${theme === 'showgirl' ? 'text-yellow-400/80 text-glow-gold' : 'text-white/60'}`}>
+                {theme === 'xmas' ? "Jingle Bells Edition" :
+                 theme === 'swift' ? "The Eras Tour" :
+                 theme === 'blackpink' ? "BLACKPINK IN YOUR AREA" :
+                 theme === 'aespa' ? "SYNK DIVE INTO KWANGYA" :
+                 theme === 'rosie' ? "NUMBER ONE GIRL" :
+                 theme === 'pkl' ? "G1VN - ANH LÀ THẰNG TỒI" :
+                 theme === 'showgirl' ? "THE SPOTLIGHT IS YOURS" :
+                 "STUDY WITH OTTER"}
+            </p>
+            {theme === 'showgirl' && <p className="text-yellow-400/80 text-sm font-bold mt-1 animate-pulse">✨ VIP ACCESS ✨</p>}
+            
+            <p className="absolute bottom-10 text-white/40 text-sm">Chạm bất kỳ đâu để đóng</p>
+        </div>
+      )}
       
       {/* HEADER */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 transition-colors duration-300">
+      <header className={`${theme === 'showgirl' ? 'bg-slate-900/80 backdrop-blur-md border-orange-900/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} border-b sticky top-0 z-40 transition-all duration-300`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div 
             className="flex items-center space-x-2 group cursor-pointer select-none transition-transform active:scale-95"
             onClick={() => setIsOtterMode(true)}
           >
             <div 
-                className={`w-10 h-10 bg-gradient-to-br ${styles.gradient} rounded-xl flex items-center justify-center liquid-icon relative z-10`}
+                className={`w-10 h-10 bg-gradient-to-br ${styles.gradient} rounded-xl flex items-center justify-center liquid-icon relative z-10 ${theme === 'showgirl' ? 'border border-yellow-500/50 shadow-glow-gold' : ''}`}
                 style={{ '--glow-color': styles.color } as React.CSSProperties}
             >
                 <span className="text-2xl leading-none">{styles.icon}</span>
                 {styles.subIcon && <span className="absolute -top-2 -right-1 text-base rotate-12 drop-shadow-sm">{styles.subIcon}</span>}
             </div>
             <div className="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-2">
-                <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight transition-colors leading-none">
-                Anatomy<span className={`text-glow ${styles.nameColor}`}>Otter</span> <span className="text-xs font-mono text-slate-400 ml-1">v1.0</span>
+                <h1 className={`text-xl font-bold tracking-tight transition-colors leading-none flex items-center gap-2 ${theme === 'showgirl' ? 'text-gradient-gold' : 'text-slate-800 dark:text-white'}`}>
+                    <span>Anatomy<span className={`text-glow ${styles.nameColor}`}>Otter</span></span>
+                    
+                    {/* THEME EDITION TAG */}
+                    {theme !== 'default' && (
+                        <span 
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm border ${theme === 'showgirl' ? 'border-orange-400/50' : 'border-transparent'} ${styles.badgeBg} transform translate-y-[-2px]`}
+                            style={theme === 'showgirl' ? { WebkitTextFillColor: '#ffffff' } : undefined}
+                        >
+                            {theme === 'xmas' ? 'Xmas Edition' 
+                             : theme === 'swift' ? "Taylor's Version" 
+                             : theme === 'blackpink' ? "Born Pink" 
+                             : theme === 'aespa' ? "MY WORLD" 
+                             : theme === 'rosie' ? "number one girl" 
+                             : theme === 'pkl' ? "G1VN Edition" 
+                             : theme === 'showgirl' ? "The Life of a Showgirl" 
+                             : ""}
+                        </span>
+                    )}
+                    
+                    <span 
+                        className="text-xs font-mono text-slate-400 ml-0.5"
+                        style={theme === 'showgirl' ? { WebkitTextFillColor: '#94a3b8' } : undefined}
+                    >
+                        v1.0
+                    </span>
                 </h1>
             </div>
           </div>
@@ -667,7 +864,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="relative" ref={themeDropdownRef}>
                 <button 
                     onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
-                    className="liquid-icon relative rounded-xl text-slate-500 dark:text-slate-400 w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none bg-slate-100 dark:bg-slate-800 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                    className={`liquid-icon relative rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none transition-colors ${theme === 'showgirl' ? 'bg-slate-800 text-yellow-500 border-yellow-900/50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:text-amber-600 dark:hover:text-amber-400'}`}
                     style={{ '--glow-color': 'rgba(236, 72, 153, 0.5)' } as React.CSSProperties}
                     title="Đổi giao diện"
                 >
@@ -682,6 +879,8 @@ export const Layout: React.FC<LayoutProps> = ({
                                 {themeOptions.map((opt) => {
                                     const isShowgirl = opt.id === 'showgirl';
                                     const isSelected = theme === opt.id;
+                                    const isLocked = isShowgirl && !user.isVipShowgirl;
+
                                     return (
                                         <button
                                             key={opt.id}
@@ -692,15 +891,23 @@ export const Layout: React.FC<LayoutProps> = ({
                                                     : isShowgirl
                                                         ? 'border-orange-400 dark:border-orange-500 bg-gradient-to-br from-orange-50 to-teal-50 dark:from-slate-800 dark:to-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)] ring-2 ring-orange-400/30 scale-[1.02]'
                                                         : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                            }`}
+                                            } ${isLocked ? 'opacity-80 grayscale-[0.3]' : ''}`}
                                         >
-                                            {isShowgirl && !isSelected && (
+                                            {isShowgirl && !isSelected && !isLocked && (
                                                 <div className="absolute inset-0 bg-gradient-to-tr from-orange-400/20 to-transparent opacity-50 pointer-events-none animate-pulse"></div>
                                             )}
-                                            {isShowgirl && <span className="absolute top-0 right-0.5 text-xs animate-pulse">👑</span>}
-                                            <span className={`text-2xl mb-1 ${isShowgirl && !isSelected ? 'animate-bounce' : ''}`}>{opt.icon}</span>
+                                            {isShowgirl && !isLocked && <span className="absolute top-0 right-0.5 text-xs animate-pulse">👑</span>}
+                                            
+                                            {/* LOCK OVERLAY */}
+                                            {isLocked && (
+                                                <div className="absolute inset-0 bg-black/10 dark:bg-black/40 flex items-center justify-center z-20 backdrop-blur-[1px]">
+                                                    <Lock className="w-6 h-6 text-white drop-shadow-md" />
+                                                </div>
+                                            )}
+
+                                            <span className={`text-2xl mb-1 ${isShowgirl && !isSelected && !isLocked ? 'animate-bounce' : ''}`}>{opt.icon}</span>
                                             <span className="text-xs font-bold relative z-10">{opt.name}</span>
-                                            {isShowgirl && !isSelected && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-orange-500 rounded-full animate-ping"></span>}
+                                            {isShowgirl && !isSelected && !isLocked && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-orange-500 rounded-full animate-ping"></span>}
                                             {isSelected && <div className="w-1 h-1 rounded-full bg-current mt-1"></div>}
                                         </button>
                                     );
@@ -732,11 +939,11 @@ export const Layout: React.FC<LayoutProps> = ({
             >
                {/* Unified Trigger Card */}
                <div 
-                  className="flex items-center gap-3 px-3 py-1.5 rounded-2xl liquid-icon cursor-pointer bg-transparent transition-all duration-300 border border-transparent hover:border-amber-100 dark:hover:border-amber-900"
+                  className={`flex items-center gap-3 px-3 py-1.5 rounded-2xl liquid-icon cursor-pointer bg-transparent transition-all duration-300 border border-transparent ${theme === 'showgirl' ? 'hover:border-yellow-500/50' : 'hover:border-amber-100 dark:hover:border-amber-900'}`}
                   style={{ '--glow-color': 'rgba(245, 158, 11, 0.5)' } as React.CSSProperties}
                >
                   <div className="hidden md:block text-right">
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200 transition-colors">{user.fullName}</p>
+                      <p className={`text-sm font-bold transition-colors ${theme === 'showgirl' ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{user.fullName}</p>
                       <p className="text-xs text-slate-400 transition-colors">{user.studentId}</p>
                   </div>
                   <div className="text-slate-600 dark:text-slate-300 transition-colors relative">
@@ -744,7 +951,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         <img 
                           src={user.avatar} 
                           alt="Profile" 
-                          className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700" 
+                          className={`w-9 h-9 rounded-full object-cover border ${theme === 'showgirl' ? 'border-yellow-500 shadow-glow-gold' : 'border-slate-200 dark:border-slate-700'}`}
                         />
                       ) : (
                         <UserCircle className="w-9 h-9" />
@@ -868,7 +1075,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative z-10">
         {children}
       </main>
       

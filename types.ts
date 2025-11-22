@@ -7,9 +7,11 @@ export enum AppMode {
 }
 
 export interface UserProfile {
+  uid?: string; // Firebase User ID
   fullName: string;
   studentId: string;
   avatar?: string; // Base64 image string
+  isVipShowgirl?: boolean; // Trạng thái đã mua giao diện Showgirl
 }
 
 export interface MCQQuestion {
