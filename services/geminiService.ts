@@ -2,15 +2,16 @@
 import { GoogleGenAI, Type, Schema, GenerateContentResponse } from "@google/genai";
 import { Difficulty, GeneratedMCQResponse, GeneratedStationResponse, MentorResponse, StationItem } from "../types";
 
-// Lấy API Key từ biến môi trường (Vercel Environment Variable)
+// Lấy API Key từ biến môi trường
 const apiKey = process.env.API_KEY || '';
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey });
 
-// UPGRADE: Use Gemini 3 Pro for superior reasoning
-const MODEL_MCQ = "gemini-3-pro-preview";
-const MODEL_VISION = "gemini-2.5-flash"; // Updated from 1.5 to 2.5
+// OPTIMIZATION: Use Gemini 2.5 Flash exclusively.
+// It is the most cost-effective and fastest model for high-concurrency apps.
+const MODEL_MCQ = "gemini-2.5-flash"; 
+const MODEL_VISION = "gemini-2.5-flash"; 
 const MODEL_CHAT = "gemini-2.5-flash";
 
 interface ContentFile {
@@ -18,10 +19,12 @@ interface ContentFile {
     isText: boolean;
 }
 
-// Token Limits
-const LIMIT_THEORY_CHARS = 2400000; 
-const LIMIT_CLINICAL_CHARS = 1000000; 
-const LIMIT_SAMPLE_CHARS = 200000; 
+// OPTIMIZATION: Strict Token Limits.
+// Reduced limits to ensure we stay within free/low-tier quotas even with many users.
+// 60k chars is roughly 15k tokens.
+const LIMIT_THEORY_CHARS = 60000; 
+const LIMIT_CLINICAL_CHARS = 30000; 
+const LIMIT_SAMPLE_CHARS = 20000;
 
 // --- RETRY LOGIC HELPER ---
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -39,7 +42,6 @@ async function retryGeminiCall<T>(
     } catch (error: any) {
       lastError = error;
       
-      // Check for common API errors
       const isRateLimit = 
         error.status === 429 || 
         error.status === 503 ||
@@ -50,10 +52,8 @@ async function retryGeminiCall<T>(
           error.message.includes("Overloaded")
         ));
 
-      // Check for Model Not Found (404) - Usually due to old code or region lock
       if (error.status === 404 || (error.message && error.message.includes("not found"))) {
-          console.error("Model Not Found Error. Please check if you are using the latest code and a valid API Key.");
-          throw new Error(`Lỗi Model AI (${error.status}): Không tìm thấy Model. Vui lòng Redeploy code mới nhất lên Vercel.`);
+          throw new Error(`Lỗi Model AI (${error.status}): Không tìm thấy Model. Vui lòng Redeploy code mới nhất.`);
       }
 
       if (isRateLimit) {
@@ -69,9 +69,60 @@ async function retryGeminiCall<T>(
   
   const cleanMsg = lastError?.message || "Unknown error";
   if (cleanMsg.includes("quota") || cleanMsg.includes("RESOURCE_EXHAUSTED")) {
-      throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded). Vui lòng kiểm tra gói cước hoặc thử lại vào ngày mai.");
+      throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded). Hệ thống đang quá tải, vui lòng thử lại sau ít phút.");
   }
   throw new Error(`Lỗi kết nối AI: ${cleanMsg}`);
+}
+
+// --- INTELLIGENT CONTEXT FILTERING ---
+// Instead of truncating randomly, we find chunks containing keywords from the topic.
+function filterRelevantContent(content: string, topic: string, limit: number): string {
+    if (!topic || topic.trim().length < 2) {
+        return content.substring(0, limit); // Fallback to simple truncation
+    }
+
+    const keywords = topic.toLowerCase().split(/\s+/).filter(w => w.length > 2); // Split topic into keywords
+    if (keywords.length === 0) return content.substring(0, limit);
+
+    // Split content into paragraphs or logical chunks (approx 500 chars or double newline)
+    const chunks = content.split(/\n\s*\n/); 
+    
+    // Score each chunk based on keyword density
+    const scoredChunks = chunks.map(chunk => {
+        const lowerChunk = chunk.toLowerCase();
+        let score = 0;
+        keywords.forEach(kw => {
+            if (lowerChunk.includes(kw)) score += 3; // High value for exact keyword
+        });
+        // Bonus for "Introduction" or "Definition" style words if score > 0
+        if (score > 0 && (lowerChunk.includes("khái niệm") || lowerChunk.includes("định nghĩa") || lowerChunk.includes("chức năng"))) {
+            score += 1;
+        }
+        return { text: chunk, score };
+    });
+
+    // Sort by score descending
+    scoredChunks.sort((a, b) => b.score - a.score);
+
+    let result = "";
+    let currentLen = 0;
+
+    // Reconstruct content prioritizing high scores
+    for (const chunk of scoredChunks) {
+        if (chunk.score === 0 && currentLen > limit / 2) continue; // Skip irrelevant chunks if we have enough data
+        if (currentLen + chunk.text.length > limit) break;
+        
+        result += chunk.text + "\n\n";
+        currentLen += chunk.text.length;
+    }
+
+    // If result is too short (topic didn't match well), append intro text
+    if (currentLen < Math.min(limit, 5000)) {
+        const remaining = limit - currentLen;
+        result += "\n--- Additional Context ---\n" + content.substring(0, remaining);
+    }
+
+    return result;
 }
 
 export const generateMCQQuestions = async (
@@ -80,29 +131,17 @@ export const generateMCQQuestions = async (
   difficulties: Difficulty[],
   files: { theory?: ContentFile[]; clinical?: ContentFile[]; sample?: ContentFile[] } = {}
 ): Promise<GeneratedMCQResponse> => {
-  if (!apiKey) throw new Error("Chưa cấu hình API Key. Vui lòng thêm API_KEY vào Vercel Environment Variables.");
+  if (!apiKey) throw new Error("Chưa cấu hình API Key.");
 
+  // Optimized Prompt
   let systemInstruction = `
-    Bạn là một giáo sư Y khoa hàng đầu. Nhiệm vụ của bạn là tạo đề thi trắc nghiệm giải phẫu học chất lượng cao.
-    
-    QUY TẮC PHÂN TÍCH TÀI LIỆU (TUÂN THỦ TUYỆT ĐỐI):
-    1. DỮ LIỆU LÝ THUYẾT (Theory): CHỈ được sử dụng để tạo các câu hỏi thuộc mức độ: 
-       - ${Difficulty.REMEMBER} (Ghi nhớ)
-       - ${Difficulty.UNDERSTAND} (Hiểu)
-       - ${Difficulty.APPLY} (Vận dụng thấp)
-
-    2. DỮ LIỆU LÂM SÀNG (Clinical): CHỈ được sử dụng để tạo câu hỏi mức độ:
-       - ${Difficulty.CLINICAL} (Lâm sàng/Ca bệnh)
-       Câu hỏi lâm sàng bắt buộc phải là các Case Study (tình huống bệnh nhân) cụ thể.
-
-    3. ĐỀ THI MẪU: Nếu có, hãy học phong cách đặt câu hỏi và format từ đó.
-
-    CẤU TRÚC ĐỀ THI:
-    - Tổng số câu: ${count} câu.
-    - Chủ đề: "${topic}".
-    - Các mức độ khó yêu cầu: ${difficulties.join(', ')}.
-    - Mỗi câu hỏi có 4 lựa chọn, 1 đáp án đúng.
-    - Giải thích: Phải cực kỳ chi tiết, trích dẫn lý do tại sao đúng/sai.
+    Bạn là giáo sư Y khoa. Tạo ${count} câu trắc nghiệm giải phẫu về chủ đề "${topic}".
+    Độ khó: ${difficulties.join(', ')}.
+    Yêu cầu: 
+    1. Trả về định dạng JSON thuần túy.
+    2. 4 lựa chọn, 1 đáp án đúng.
+    3. Giải thích ngắn gọn, súc tích.
+    4. Tập trung hoàn toàn vào nội dung tài liệu được cung cấp dưới đây liên quan đến "${topic}".
   `;
 
   const schema: Schema = {
@@ -128,269 +167,194 @@ export const generateMCQQuestions = async (
 
   const parts: any[] = [];
 
-  const addContentParts = (fileItems: ContentFile[] | undefined, sectionTitle: string, usageInstruction: string, charLimit: number) => {
+  // Helper to truncate AND filter content efficiently
+  const addContentParts = (fileItems: ContentFile[] | undefined, sectionTitle: string, charLimit: number) => {
     if (!fileItems || fileItems.length === 0) return;
 
-    parts.push({ text: `\n=== BẮT ĐẦU PHẦN: ${sectionTitle} ===\nCHỈ DẪN: ${usageInstruction}\n` });
+    parts.push({ text: `\n--- TÀI LIỆU ${sectionTitle} (Đã lọc theo chủ đề "${topic}") ---\n` });
     
     let currentChars = 0;
 
     for (const item of fileItems) {
-        if (currentChars >= charLimit) {
-             parts.push({ text: `\n[CẢNH BÁO: Đã ngưng tải thêm tài liệu phần này do vượt quá giới hạn bộ nhớ cho phép]\n` });
-             break;
-        }
+        if (currentChars >= charLimit) break;
 
-        if (item.content) {
-            if (item.isText) {
-                let textToAdd = item.content;
-                const remaining = charLimit - currentChars;
-
-                if (textToAdd.length > remaining) {
-                    textToAdd = textToAdd.substring(0, remaining) + "\n\n[...Nội dung file này đã bị cắt bớt do giới hạn bộ nhớ AI...]";
-                }
-                
-                parts.push({ text: `\n--- FILE CONTENT ---\n${textToAdd}\n` });
-                currentChars += textToAdd.length;
-            } else {
-                const base64Data = item.content.includes('base64,') ? item.content.split('base64,')[1] : item.content;
-                parts.push({
-                    inlineData: {
-                        mimeType: "application/pdf", 
-                        data: base64Data
-                    }
-                });
-                currentChars += 50000; 
-            }
+        if (item.content && item.isText) {
+             const remaining = charLimit - currentChars;
+             // USE THE INTELLIGENT FILTER HERE
+             const relevantContent = filterRelevantContent(item.content, topic, remaining);
+             
+             parts.push({ text: relevantContent });
+             currentChars += relevantContent.length;
+        } else if (item.content && !item.isText) {
+             // Fallback for Images (rarely used in text mode but kept for type safety)
+             parts.push({ text: item.content.substring(0, 1000) });
         }
     }
-    parts.push({ text: `=== KẾT THÚC PHẦN: ${sectionTitle} ===\n` });
   };
 
-  addContentParts(files.theory, "TÀI LIỆU LÝ THUYẾT", `Dùng cho câu hỏi mức độ thấp.`, LIMIT_THEORY_CHARS);
-  addContentParts(files.clinical, "TÀI LIỆU LÂM SÀNG", `CHỈ Dùng cho câu hỏi mức độ ${Difficulty.CLINICAL}.`, LIMIT_CLINICAL_CHARS);
-  addContentParts(files.sample, "ĐỀ THI MẪU", "Tham khảo cách đặt câu hỏi.", LIMIT_SAMPLE_CHARS);
+  addContentParts(files.theory, "LÝ THUYẾT", LIMIT_THEORY_CHARS);
+  addContentParts(files.clinical, "LÂM SÀNG", LIMIT_CLINICAL_CHARS);
+  addContentParts(files.sample, "ĐỀ MẪU", LIMIT_SAMPLE_CHARS);
 
-  parts.push({ text: `Hãy "Suy nghĩ" (Thinking) kỹ về phân phối câu hỏi, sau đó soạn thảo ${count} câu hỏi trắc nghiệm về chủ đề "${topic}" theo đúng định dạng JSON đã yêu cầu.` });
+  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON.` });
 
-  try {
-    console.log(`Generating MCQs with model: ${MODEL_MCQ}`);
-    const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-      model: MODEL_MCQ,
-      contents: { parts: parts },
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: schema,
-        thinkingConfig: { thinkingBudget: 2048 }, 
-      },
-    }));
+  return retryGeminiCall(async () => {
+      const response = await ai.models.generateContent({
+          model: MODEL_MCQ,
+          contents: {
+              role: 'user',
+              parts: parts
+          },
+          config: {
+              systemInstruction: systemInstruction,
+              responseMimeType: "application/json",
+              responseSchema: schema,
+              temperature: 0.7
+          }
+      });
 
-    let text = response.text;
-    if (!text) throw new Error("No response from AI");
-    
-    const jsonBlockMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (jsonBlockMatch) {
-        text = jsonBlockMatch[1];
-    } else {
-        text = text.replace(/```json/g, '').replace(/```/g, '');
-    }
-    
-    text = text.trim();
-    const parsed = JSON.parse(text);
-
-    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.questions)) {
-       throw new Error("Invalid response structure");
-    }
-
-    return parsed as GeneratedMCQResponse;
-
-  } catch (error: any) {
-    console.error("Gemini API Error:", error);
-    if (error.message && (error.message.includes("quá tải") || error.message.includes("hết hạn mức") || error.message.includes("Redeploy"))) {
-        throw error;
-    }
-    if (error.message && error.message.includes("token count exceeds")) {
-        throw new Error("Tổng dung lượng tài liệu quá lớn. Vui lòng bớt file.");
-    }
-    throw error;
-  }
+      const text = response.text;
+      if (!text) throw new Error("AI trả về dữ liệu rỗng.");
+      return JSON.parse(text) as GeneratedMCQResponse;
+  });
 };
 
-// --- Generate Spot Test Question from Image (Vision) ---
-export interface StationQuestionResponse {
-    isValid: boolean;
-    questions?: {
-        questionText: string;
-        correctAnswer: string;
-        explanation: string;
-    }[];
-}
+export const generateStationQuestionFromImage = async (
+    base64Image: string,
+    topic: string
+): Promise<{ questions: any[], isValid: boolean }> => {
+    if (!apiKey) throw new Error("API Key missing.");
 
-export const generateStationQuestionFromImage = async (base64Image: string, topic?: string): Promise<StationQuestionResponse> => {
-    if (!apiKey) throw new Error("Chưa cấu hình API Key.");
-    
     const systemInstruction = `
-    Bạn là giám khảo thi chạy trạm (Spot Test) Giải phẫu học cực kỳ nghiêm túc.
-    
-    NHIỆM VỤ 1: KIỂM TRA TÍNH HỢP LỆ & ĐÚNG CHỦ ĐỀ: "${topic || 'Giải phẫu học'}".
-    - Hình ảnh HỢP LỆ: Hình giải phẫu rõ ràng, có chú thích/leader lines, ĐÚNG CHỦ ĐỀ.
-    - Hình ảnh KHÔNG HỢP LỆ: Toàn chữ, Mục lục, Sai chủ đề.
-
-    NHIỆM VỤ 2: RA ĐỀ (Nếu Hợp lệ):
-    1. Chọn MỘT cấu trúc giải phẫu quan trọng nhất trong hình LIÊN QUAN ĐẾN CHỦ ĐỀ.
-    2. Đặt câu hỏi định danh trực tiếp (VD: "Chi tiết số 1 là gì?").
-    3. Đáp án Tiếng Việt chính xác.
-
-    Output JSON format: { "isValid": boolean, "questions": [...] }
+        Bạn là trạm trưởng thi chạy trạm giải phẫu.
+        Nhiệm vụ: Nhìn hình ảnh lát cắt/mô hình giải phẫu và đặt 1 câu hỏi định danh cấu trúc (VD: "Chi tiết số 1 là gì?", "Cấu trúc mũi tên chỉ vào?").
+        Chủ đề: "${topic}".
+        Nếu hình ảnh KHÔNG RÕ RÀNG hoặc KHÔNG PHẢI GIẢI PHẪU, trả về danh sách câu hỏi rỗng.
     `;
 
-    const prompt = topic 
-        ? `Kiểm tra xem hình này có chứa cấu trúc giải phẫu thuộc chủ đề "${topic}" không. Nếu có, hãy tạo 1 câu hỏi trạm.` 
-        : "Kiểm tra xem đây có phải là hình giải phẫu hợp lệ không. Nếu có, hãy tạo 1 câu hỏi trạm.";
+    const schema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+            isValid: { type: Type.BOOLEAN, description: "True nếu ảnh là giải phẫu rõ ràng" },
+            questions: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        questionText: { type: Type.STRING },
+                        correctAnswer: { type: Type.STRING },
+                        explanation: { type: Type.STRING }
+                    },
+                    required: ["questionText", "correctAnswer", "explanation"]
+                }
+            }
+        },
+        required: ["isValid", "questions"]
+    };
 
-    try {
-        const cleanBase64 = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
-        
-        console.log(`Generating Station with model: ${MODEL_VISION}`);
-        const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
+    // Cleanup Base64 header if present
+    const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+
+    return retryGeminiCall(async () => {
+        const response = await ai.models.generateContent({
             model: MODEL_VISION,
-            contents: { 
-                role: 'user', 
+            contents: {
+                role: 'user',
                 parts: [
-                    { text: prompt },
-                    { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
-                ] 
+                    { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } },
+                    { text: "Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này." }
+                ]
             },
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
-                responseSchema: {
+                responseSchema: schema,
+                temperature: 0.5
+            }
+        });
+        
+        const text = response.text;
+        if (!text) return { questions: [], isValid: false };
+        return JSON.parse(text);
+    });
+};
+
+export const chatWithOtter = async (history: any[], newMessage: string, image?: string): Promise<string> => {
+    if (!apiKey) throw new Error("API Key missing.");
+
+    let parts: any[] = [];
+    if (image) {
+        const cleanBase64 = image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+        parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } });
+    }
+    parts.push({ text: newMessage });
+
+    // Convert history to Gemini format, excluding the current new message
+    // Limit history to last 4 turns to save tokens
+    const recentHistory = history.slice(-8).map(h => ({
+        role: h.role === 'model' ? 'model' : 'user',
+        parts: [{ text: h.text }] // Simplified for history
+    }));
+
+    return retryGeminiCall(async () => {
+        const chat = ai.chats.create({
+            model: MODEL_CHAT,
+            history: recentHistory,
+            config: {
+                systemInstruction: "Bạn là Rái Cá Anatomy, trợ lý học tập vui vẻ, chuyên gia giải phẫu học.",
+            }
+        });
+
+        const result = await chat.sendMessage({
+            parts: parts
+        });
+
+        return result.text || "Rái cá đang bận bắt cá, thử lại sau nhé! 🦦";
+    });
+};
+
+export const analyzeResultWithOtter = async (topic: string, stats: any): Promise<MentorResponse> => {
+    const systemInstruction = `
+        Bạn là Rái Cá Mentor. Phân tích kết quả thi giải phẫu của sinh viên.
+        Phong cách: Vui vẻ, động viên, nhưng chuyên môn cao. Dùng emoji 🦦.
+        Output JSON.
+    `;
+
+    const schema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+            analysis: { type: Type.STRING },
+            strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+            weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+            roadmap: {
+                type: Type.ARRAY,
+                items: {
                     type: Type.OBJECT,
                     properties: {
-                        isValid: { type: Type.BOOLEAN },
-                        questions: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    questionText: { type: Type.STRING },
-                                    correctAnswer: { type: Type.STRING },
-                                    explanation: { type: Type.STRING }
-                                },
-                                required: ["questionText", "correctAnswer", "explanation"]
-                            }
-                        }
-                    },
-                    required: ["isValid"]
+                        step: { type: Type.STRING },
+                        details: { type: Type.STRING }
+                    }
                 }
             }
-        }));
-
-        let text = response.text || "";
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(text) as StationQuestionResponse;
-    } catch (e: any) {
-        console.error("Vision API Error", e);
-        if (e.message && (e.message.includes("quá tải") || e.message.includes("quota") || e.message.includes("429") || e.message.includes("Redeploy"))) {
-            throw e;
         }
-        return { isValid: false, questions: [] };
-    }
-};
+    };
 
-export const analyzeResultWithOtter = async (
-    topic: string,
-    stats: Record<string, { correct: number, total: number }>
-): Promise<MentorResponse> => {
-    if (!apiKey) return { analysis: "Chưa có API Key", strengths: [], weaknesses: [], roadmap: [] };
-
-    const statsDescription = Object.entries(stats)
-        .map(([diff, val]) => {
-             const pct = val.total > 0 ? Math.round((val.correct / val.total) * 100) : 0;
-             return `- ${diff}: ${val.correct}/${val.total} câu (${pct}%)`;
-        })
-        .join('\n');
-
-    const prompt = `
-    Đóng vai là "Rái cá nhỏ" 🦦 - gia sư AI giải phẫu.
-    Học viên vừa làm bài thi chủ đề: "${topic}".
-    DỮ LIỆU: \n${statsDescription}
-    
-    NHIỆM VỤ:
-    1. Phân tích năng lực.
-    2. Chỉ ra Điểm mạnh/Yếu.
-    3. Lộ trình cải thiện (4 bước cụ thể, kỹ thuật học tập rõ ràng).
-    
-    JSON Output: { "analysis": string, "strengths": string[], "weaknesses": string[], "roadmap": [{ "step": string, "details": string }] }
-    `;
-
-    try {
-        console.log(`Analyzing with model: ${MODEL_MCQ}`);
-        const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-            model: MODEL_MCQ,
-            contents: { role: 'user', parts: [{ text: prompt }] },
+    return retryGeminiCall(async () => {
+        const response = await ai.models.generateContent({
+            model: MODEL_MCQ, // Use Flash
+            contents: {
+                role: 'user',
+                parts: [{ text: `Chủ đề: ${topic}. Kết quả: ${JSON.stringify(stats)}. Hãy nhận xét.` }]
+            },
             config: {
+                systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
-                thinkingConfig: { thinkingBudget: 2048 }
+                responseSchema: schema
             }
-        }));
+        });
 
-        let text = response.text || "";
-        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+        const text = response.text;
+        if (!text) throw new Error("No analysis");
         return JSON.parse(text) as MentorResponse;
-    } catch (e) {
-        console.error(e);
-        return {
-            analysis: "Úi cha! Rái cá đang bận bắt cá nên không phân tích được rồi. Thử lại sau nhé! 🦦",
-            strengths: [],
-            weaknesses: [],
-            roadmap: []
-        };
-    }
-};
-
-export const chatWithOtter = async (history: {role: 'user' | 'model', text: string, image?: string}[], message: string, image?: string): Promise<string> => {
-    if (!apiKey) return "Vui lòng nhập API Key để chat với Rái cá!";
-
-    const systemInstruction = `Bạn là "Rái cá nhỏ" (Little Otter) 🦦 - trợ lý ảo GIẢI PHẪU HỌC.
-    - Vui vẻ, chuyên nghiệp, dùng emoji 🦦 🦴 🧠.
-    - Giải đáp kiến thức giải phẫu, phân tích hình ảnh.
-    - Trình bày Markdown gọn gàng.
-    `;
-
-    const contents = history.map(msg => {
-        const parts: any[] = [{ text: msg.text }];
-        if (msg.image) {
-             try {
-                 const base64Data = msg.image.includes('base64,') ? msg.image.split('base64,')[1] : msg.image;
-                 const mimeType = msg.image.match(/data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-                 parts.push({ inlineData: { mimeType, data: base64Data }});
-             } catch (e) { console.warn("History image error", e); }
-        }
-        return { role: msg.role, parts };
     });
-
-    const currentParts: any[] = [{ text: message }];
-    if (image) {
-        try {
-            const base64Data = image.includes('base64,') ? image.split('base64,')[1] : image;
-            const mimeType = image.match(/data:([^;]+);base64,/)?.[1] || 'image/jpeg';
-            currentParts.push({ inlineData: { mimeType, data: base64Data }});
-        } catch (e) { console.warn("Current image error", e); }
-    }
-    contents.push({ role: 'user', parts: currentParts });
-
-    try {
-        console.log(`Chatting with model: ${MODEL_CHAT}`);
-        const response = await retryGeminiCall<GenerateContentResponse>(() => ai.models.generateContent({
-            model: MODEL_CHAT,
-            contents,
-            config: { systemInstruction }
-        }));
-        return response.text || "Rái cá đang bơi đi đâu mất rồi... 🦦";
-    } catch (e) {
-        console.error(e);
-        return "Úi! Mạng bị nghẽn hoặc lỗi kết nối. Bạn hỏi lại nhé? 🦦";
-    }
 };

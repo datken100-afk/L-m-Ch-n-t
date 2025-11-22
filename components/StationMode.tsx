@@ -297,8 +297,9 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
             const batchPromises = batch.map(async (pageNum) => {
                 try {
                     const page = await pdf.getPage(pageNum);
-                    // UPDATED: Increase scale for higher resolution (4.5x) to support zooming
-                    const viewport = page.getViewport({ scale: 4.5 }); 
+                    // OPTIMIZATION: Reduced scale from 4.5 to 2.0 to save massive amounts of image tokens
+                    // 2.0 is enough for AI to read text and see structures.
+                    const viewport = page.getViewport({ scale: 2.0 }); 
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     canvas.height = viewport.height;
@@ -307,8 +308,8 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                     if (!ctx) return null;
                     
                     await page.render({ canvasContext: ctx, viewport }).promise;
-                    // UPDATED: High quality JPEG
-                    const base64 = canvas.toDataURL('image/jpeg', 0.9); 
+                    // OPTIMIZATION: Use 0.8 quality to slightly compress
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8); 
 
                     const res = await generateStationQuestionFromImage(base64, processingTopic);
                     
