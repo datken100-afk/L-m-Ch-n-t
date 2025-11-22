@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, X, Image as ImageIcon, Loader2, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import { chatWithOtter } from '../services/geminiService';
+import { ThemeType } from '../App';
 
 interface Message {
     id: string;
@@ -10,7 +11,11 @@ interface Message {
     image?: string;
 }
 
-export const OtterChat: React.FC = () => {
+interface OtterChatProps {
+    theme?: ThemeType;
+}
+
+export const OtterChat: React.FC<OtterChatProps> = ({ theme = 'default' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false); 
     const [messages, setMessages] = useState<Message[]>([
@@ -25,6 +30,86 @@ export const OtterChat: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Theme Styles Config
+    const getThemeStyles = () => {
+        switch (theme) {
+            case 'xmas': return {
+                floatBtn: 'bg-gradient-to-br from-red-600 to-green-600 shadow-[0_4px_20px_rgba(220,38,38,0.5)] hover:shadow-[0_6px_30px_rgba(22,163,74,0.6)]',
+                header: 'bg-gradient-to-r from-red-600 to-green-600',
+                userBubble: 'bg-gradient-to-br from-red-600 to-green-600 shadow-red-500/20',
+                sendBtn: 'bg-gradient-to-r from-red-500 to-green-600 shadow-red-500/30',
+                inputFocus: 'focus:border-red-500 dark:focus:border-green-500',
+                modelIcon: 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+                loaderColor: 'bg-red-500'
+            };
+            case 'swift': return {
+                floatBtn: 'bg-gradient-to-br from-pink-500 to-purple-600 shadow-[0_4px_20px_rgba(236,72,153,0.5)] hover:shadow-[0_6px_30px_rgba(168,85,247,0.6)]',
+                header: 'bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400',
+                userBubble: 'bg-gradient-to-br from-pink-500 to-purple-600 shadow-pink-500/20',
+                sendBtn: 'bg-gradient-to-r from-pink-500 to-purple-600 shadow-purple-500/30',
+                inputFocus: 'focus:border-pink-500 dark:focus:border-purple-500',
+                modelIcon: 'bg-purple-100 dark:bg-purple-900/30 border-purple-200 dark:border-purple-800',
+                loaderColor: 'bg-purple-500'
+            };
+            case 'blackpink': return {
+                floatBtn: 'bg-gradient-to-br from-pink-600 to-black shadow-[0_4px_20px_rgba(236,72,153,0.6)] hover:shadow-[0_6px_30px_rgba(0,0,0,0.8)]',
+                header: 'bg-gradient-to-r from-pink-600 to-slate-900',
+                userBubble: 'bg-gradient-to-br from-pink-600 to-slate-900 shadow-pink-500/30',
+                sendBtn: 'bg-gradient-to-r from-pink-600 to-slate-900 shadow-pink-500/30',
+                inputFocus: 'focus:border-pink-500 dark:focus:border-pink-700',
+                modelIcon: 'bg-pink-100 dark:bg-pink-900/30 border-pink-200 dark:border-pink-800',
+                loaderColor: 'bg-pink-500'
+            };
+            case 'aespa': return {
+                floatBtn: 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-[0_4px_20px_rgba(99,102,241,0.5)] hover:shadow-[0_6px_30px_rgba(168,85,247,0.6)]',
+                header: 'bg-gradient-to-r from-indigo-500 via-purple-500 to-slate-800',
+                userBubble: 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-indigo-500/20',
+                sendBtn: 'bg-gradient-to-r from-indigo-500 to-purple-600 shadow-indigo-500/30',
+                inputFocus: 'focus:border-indigo-500 dark:focus:border-purple-500',
+                modelIcon: 'bg-indigo-100 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800',
+                loaderColor: 'bg-indigo-500'
+            };
+            case 'rosie': return {
+                floatBtn: 'bg-gradient-to-br from-rose-500 to-red-600 shadow-[0_4px_20px_rgba(225,29,72,0.5)] hover:shadow-[0_6px_30px_rgba(220,38,38,0.6)]',
+                header: 'bg-gradient-to-r from-rose-500 to-red-600',
+                userBubble: 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/20',
+                sendBtn: 'bg-gradient-to-r from-rose-500 to-red-600 shadow-rose-500/30',
+                inputFocus: 'focus:border-rose-500 dark:focus:border-red-500',
+                modelIcon: 'bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800',
+                loaderColor: 'bg-rose-500'
+            };
+            case 'pkl': return {
+                floatBtn: 'bg-gradient-to-br from-slate-600 to-cyan-600 shadow-[0_4px_20px_rgba(6,182,212,0.5)] hover:shadow-[0_6px_30px_rgba(71,85,105,0.6)]',
+                header: 'bg-gradient-to-r from-slate-700 via-cyan-600 to-slate-800',
+                userBubble: 'bg-gradient-to-br from-slate-600 to-cyan-600 shadow-cyan-500/20',
+                sendBtn: 'bg-gradient-to-r from-slate-600 to-cyan-600 shadow-cyan-500/30',
+                inputFocus: 'focus:border-cyan-500 dark:focus:border-slate-500',
+                modelIcon: 'bg-cyan-100 dark:bg-cyan-900/30 border-cyan-200 dark:border-cyan-800',
+                loaderColor: 'bg-cyan-500'
+            };
+            case 'showgirl': return {
+                floatBtn: 'bg-gradient-to-br from-teal-500 to-orange-500 shadow-[0_4px_20px_rgba(20,184,166,0.5)] hover:shadow-[0_6px_30px_rgba(249,115,22,0.6)]',
+                header: 'bg-gradient-to-r from-teal-500 to-orange-500',
+                userBubble: 'bg-gradient-to-br from-teal-500 to-orange-500 shadow-orange-500/20',
+                sendBtn: 'bg-gradient-to-r from-teal-500 to-orange-500 shadow-teal-500/30',
+                inputFocus: 'focus:border-orange-500 dark:focus:border-teal-500',
+                modelIcon: 'bg-orange-100 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800',
+                loaderColor: 'bg-orange-500'
+            };
+            default: return {
+                floatBtn: 'bg-gradient-to-br from-amber-400 to-orange-600 shadow-[0_4px_20px_rgba(245,158,11,0.5)] hover:shadow-[0_6px_30px_rgba(245,158,11,0.7)]',
+                header: 'bg-gradient-to-r from-amber-400 to-orange-500',
+                userBubble: 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-blue-500/20',
+                sendBtn: 'bg-gradient-to-r from-amber-400 to-orange-500 shadow-orange-500/30',
+                inputFocus: 'focus:border-amber-400 dark:focus:border-amber-600',
+                modelIcon: 'bg-amber-100 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700',
+                loaderColor: 'bg-amber-500'
+            };
+        }
+    };
+
+    const styles = getThemeStyles();
 
     // Auto scroll to bottom
     useEffect(() => {
@@ -181,15 +266,17 @@ export const OtterChat: React.FC = () => {
             >
                 {/* Header */}
                 <div 
-                    className="px-4 py-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white flex items-center justify-between shrink-0 cursor-pointer select-none"
+                    className={`px-4 py-3 ${styles.header} text-white flex items-center justify-between shrink-0 cursor-pointer select-none transition-colors duration-300`}
                     onDoubleClick={() => setIsExpanded(!isExpanded)}
                 >
                         <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-xl border border-white/30 shadow-inner">
-                            🦦
+                            {theme === 'xmas' ? '🎅' : theme === 'swift' ? '🐍' : theme === 'blackpink' ? '👑' : theme === 'aespa' ? '👽' : theme === 'rosie' ? '🌹' : theme === 'pkl' ? '🗡️' : theme === 'showgirl' ? '💃' : '🦦'}
                         </div>
                         <div>
-                            <h3 className="font-bold text-base leading-none">Rái cá Anatomy</h3>
+                            <h3 className="font-bold text-base leading-none">
+                                {theme === 'xmas' ? 'Ông già Noel' : theme === 'swift' ? 'Taylor Bot' : theme === 'blackpink' ? 'Blink Bot' : theme === 'aespa' ? 'naevis' : theme === 'rosie' ? 'Rosie' : theme === 'pkl' ? 'G1VN Bot' : theme === 'showgirl' ? 'Showgirl' : 'Rái cá Anatomy'}
+                            </h3>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_5px_rgba(74,222,128,0.8)]"></span>
                                 <span className="text-[10px] opacity-90 uppercase tracking-wider font-medium">Trực tuyến</span>
@@ -229,15 +316,15 @@ export const OtterChat: React.FC = () => {
                             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                         >
                             {msg.role === 'model' && (
-                                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-slate-800 flex items-center justify-center mr-2 text-lg shadow-sm border border-amber-200 dark:border-slate-700 self-end mb-1 shrink-0">
-                                    🦦
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-2 text-lg shadow-sm border self-end mb-1 shrink-0 ${styles.modelIcon}`}>
+                                    {theme === 'xmas' ? '🎅' : theme === 'swift' ? '🐍' : theme === 'blackpink' ? '👑' : theme === 'aespa' ? '👽' : theme === 'rosie' ? '🌹' : theme === 'pkl' ? '🗡️' : theme === 'showgirl' ? '💃' : '🦦'}
                                 </div>
                             )}
 
                             <div 
-                                className={`max-w-[85%] p-3.5 rounded-2xl relative shadow-sm ${
+                                className={`max-w-[85%] p-3.5 rounded-2xl relative shadow-sm transition-colors duration-300 ${
                                     msg.role === 'user' 
-                                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-none shadow-blue-500/20' 
+                                    ? `${styles.userBubble} text-white rounded-br-none` 
                                     : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-bl-none border border-slate-200 dark:border-slate-700'
                                 }`}
                             >
@@ -261,9 +348,9 @@ export const OtterChat: React.FC = () => {
                         <div className="flex justify-start">
                             <div className="ml-10 bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-bl-none border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-2">
                                 <div className="flex gap-1">
-                                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_0ms]"></div>
-                                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_200ms]"></div>
-                                    <div className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-[bounce_1s_infinite_400ms]"></div>
+                                    <div className={`w-1.5 h-1.5 rounded-full animate-[bounce_1s_infinite_0ms] ${styles.loaderColor}`}></div>
+                                    <div className={`w-1.5 h-1.5 rounded-full animate-[bounce_1s_infinite_200ms] ${styles.loaderColor}`}></div>
+                                    <div className={`w-1.5 h-1.5 rounded-full animate-[bounce_1s_infinite_400ms] ${styles.loaderColor}`}></div>
                                 </div>
                             </div>
                         </div>
@@ -307,14 +394,14 @@ export const OtterChat: React.FC = () => {
                             onChange={(e) => setInputText(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder="Hỏi gì đó..."
-                            className="flex-1 max-h-32 p-3 bg-slate-100 dark:bg-slate-950 border border-transparent focus:border-amber-400 dark:focus:border-amber-600 focus:bg-white dark:focus:bg-slate-900 rounded-xl focus:ring-0 resize-none text-sm text-slate-900 dark:text-white placeholder-slate-400 scrollbar-hide transition-all shadow-inner"
+                            className={`flex-1 max-h-32 p-3 bg-slate-100 dark:bg-slate-950 border border-transparent focus:bg-white dark:focus:bg-slate-900 rounded-xl focus:ring-0 resize-none text-sm text-slate-900 dark:text-white placeholder-slate-400 scrollbar-hide transition-all shadow-inner ${styles.inputFocus}`}
                             rows={1}
                         />
                         
                         <button 
                             onClick={handleSendMessage}
                             disabled={(!inputText.trim() && !selectedImage) || isLoading}
-                            className="p-3 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-xl shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex-shrink-0"
+                            className={`p-3 text-white rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex-shrink-0 ${styles.sendBtn}`}
                         >
                             {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                         </button>
@@ -325,17 +412,17 @@ export const OtterChat: React.FC = () => {
             {/* Floating Trigger / Toggle Button */}
             <button
                 onClick={toggleChat}
-                className={`fixed bottom-6 right-6 z-[60] w-16 h-16 rounded-full shadow-[0_4px_20px_rgba(245,158,11,0.5)] hover:shadow-[0_6px_30px_rgba(245,158,11,0.7)] transition-all duration-300 flex items-center justify-center group active:scale-95
+                className={`fixed bottom-6 right-6 z-[60] w-16 h-16 rounded-full transition-all duration-300 flex items-center justify-center group active:scale-95
                 ${isOpen 
-                    ? 'bg-slate-800 dark:bg-slate-700 text-white rotate-90' 
-                    : 'bg-gradient-to-br from-amber-400 to-orange-600 text-white hover:scale-110'
+                    ? 'bg-slate-800 dark:bg-slate-700 text-white rotate-90 shadow-lg' 
+                    : `${styles.floatBtn} text-white hover:scale-110`
                 }`}
                 title={isOpen ? "Đóng chat" : "Chat với Rái cá"}
             >
                 <div className="relative w-full h-full flex items-center justify-center">
                      {/* Icon: Otter (Shows when closed) */}
                     <span className={`absolute text-3xl transition-all duration-300 ${isOpen ? 'opacity-0 scale-0 rotate-90' : 'opacity-100 scale-100 rotate-0'}`}>
-                        🦦
+                        {theme === 'xmas' ? '🎅' : theme === 'swift' ? '🐍' : theme === 'blackpink' ? '👑' : theme === 'aespa' ? '👽' : theme === 'rosie' ? '🌹' : theme === 'pkl' ? '🗡️' : theme === 'showgirl' ? '💃' : '🦦'}
                         {/* Ping animation */}
                         <span className="absolute inset-0 rounded-full bg-white/20 animate-[ping_2s_infinite] -z-10"></span>
                     </span>

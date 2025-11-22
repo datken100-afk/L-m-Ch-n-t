@@ -1,8 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Sparkles, Gift, ExternalLink, FileText, Mail } from 'lucide-react';
+import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette } from 'lucide-react';
 import { UserProfile } from '../types';
 import { OtterChat } from './OtterChat';
+import { ThemeType } from '../App';
+import { ThemeTransition } from './ThemeTransition';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,8 @@ interface LayoutProps {
   darkMode: boolean;
   toggleDarkMode: () => void;
   showFeedback?: boolean;
+  theme: ThemeType;
+  setTheme: (theme: ThemeType) => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
@@ -21,15 +25,22 @@ export const Layout: React.FC<LayoutProps> = ({
   onUpdateUser,
   darkMode,
   toggleDarkMode,
-  showFeedback = false
+  showFeedback = false,
+  theme,
+  setTheme
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  
+  // Theme Dropdown State
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
+  const themeDropdownRef = useRef<HTMLDivElement>(null);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Christmas Animation Ref
-  const xmasContainerRef = useRef<HTMLDivElement>(null);
+  // Animation Refs
+  const fallingContainerRef = useRef<HTMLDivElement>(null);
   
   // Christmas Popup State
   const [showXmasPopup, setShowXmasPopup] = useState(true);
@@ -44,41 +55,142 @@ export const Layout: React.FC<LayoutProps> = ({
   // Logo Focus Mode State
   const [isOtterMode, setIsOtterMode] = useState(false);
 
-  // MARIAH EASTER EGG STATE
-  const [mariahState, setMariahState] = useState<'hidden' | 'peeking' | 'screaming'>('hidden');
+  // EASTER EGG STATE
+  const [easterEggState, setEasterEggState] = useState<'hidden' | 'peeking' | 'screaming'>('hidden');
 
-  // --- Christmas Animation Logic ---
+  // --- THEME TRANSITION STATE ---
+  const [transitionStage, setTransitionStage] = useState<'idle' | 'entering' | 'exiting'>('idle');
+  const [pendingTheme, setPendingTheme] = useState<ThemeType | null>(null);
+
+  const handleThemeChange = (newTheme: ThemeType) => {
+      if (newTheme === theme) {
+          setIsThemeDropdownOpen(false);
+          return;
+      }
+      
+      // 1. Start Entrance Animation
+      setPendingTheme(newTheme);
+      setTransitionStage('entering');
+      setIsThemeDropdownOpen(false);
+
+      // 2. Wait for cover (800ms matches the CSS duration)
+      setTimeout(() => {
+          // 3. Change Actual Theme
+          setTheme(newTheme);
+          
+          // 4. Start Exit Animation
+          setTimeout(() => {
+             setTransitionStage('exiting');
+             
+             // 5. Cleanup
+             setTimeout(() => {
+                 setTransitionStage('idle');
+                 setPendingTheme(null);
+             }, 800);
+          }, 400); // Hold the full screen for a moment
+      }, 800);
+  };
+
+  // Theme Options Data
+  const themeOptions: {id: ThemeType, name: string, icon: string, color: string, bg: string}[] = [
+      { id: 'default', name: 'Otter', icon: '🦦', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
+      { id: 'xmas', name: 'Noel', icon: '🎄', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
+      { id: 'swift', name: 'Eras', icon: '🐍', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+      { id: 'blackpink', name: 'Blink', icon: '🖤', color: 'text-pink-500', bg: 'bg-slate-900' },
+      { id: 'aespa', name: 'MY', icon: '👽', color: 'text-indigo-400', bg: 'bg-slate-900' },
+      { id: 'rosie', name: 'Rosie', icon: '🌹', color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-900/20' },
+      { id: 'pkl', name: 'G1VN', icon: '🗡️', color: 'text-cyan-500', bg: 'bg-slate-800' },
+      { id: 'showgirl', name: 'Showgirl', icon: '💃', color: 'text-orange-500', bg: 'bg-teal-50 dark:bg-teal-900/20' },
+  ];
+
+  // --- KEYBOARD SHORTCUT (Alt + U) ---
   useEffect(() => {
-    const container = xmasContainerRef.current;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && (e.key === 'u' || e.key === 'U')) {
+        e.preventDefault();
+        setIsProfileOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // --- CLICK OUTSIDE HANDLER FOR THEME DROPDOWN ---
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (themeDropdownRef.current && !themeDropdownRef.current.contains(event.target as Node)) {
+            setIsThemeDropdownOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // --- Falling Animation Logic ---
+  useEffect(() => {
+    if (theme === 'default') return;
+
+    const container = fallingContainerRef.current;
     if (!container) return;
 
-    const icons = ['❄️', '🎄', '🎁', '🎅', '🔔', '🍪', '⛄', '🦌', '⭐', '🧊'];
+    // Xmas Icons
+    const xmasIcons = ['❄️', '🎄', '🎁', '🎅', '🔔', '🍪', '⛄', '🦌', '⭐', '🧊'];
+    // Taylor Swift Eras Icons
+    const swiftIcons = ['🤠', '💛', '💜', '🧣', '🕶️', '🐍', '🦋', '🧶', '🧥', '🕰️', '🤍'];
+    // Blackpink & Solos Icons
+    const bpIcons = ['🖤', '💗', '🔨', '💸', '⭐', '🍓', '🏎️', '🌹', '🥂', '🌸', '🐰'];
+    // aespa Icons
+    const aespaIcons = ['👽', '👾', '🪐', '💿', '⛓️', '🌌', '🦋', '💜', '🤖', '⭐'];
+    // Rosie Icons
+    const rosieIcons = ['🌹', '🍷', '⚡', '👱‍♀️', '🎸', '✨', '💋', '💿'];
+    // PKL Icons (Sword, Swan, Shield, Note, Sparkle, Heart)
+    const pklIcons = ['🗡️', '🦢', '🛡️', '✨', '💙', '⚔️', '🧊', '🎶'];
+    // Showgirl Icons
+    const showgirlIcons = ['💎', '💃', '👠', '✨', '🪩', '💄', '🦢', '📸', '🥂', '🧡'];
+
+    let icons = xmasIcons;
+    if (theme === 'swift') icons = swiftIcons;
+    if (theme === 'blackpink') icons = bpIcons;
+    if (theme === 'aespa') icons = aespaIcons;
+    if (theme === 'rosie') icons = rosieIcons;
+    if (theme === 'pkl') icons = pklIcons;
+    if (theme === 'showgirl') icons = showgirlIcons;
     
     const createItem = () => {
-       // Don't overload the DOM, keep max items reasonable
        if (container.childElementCount > 25) return;
 
        const item = document.createElement('div');
        item.className = 'xmas-item'; // Uses global CSS in index.html
        item.innerText = icons[Math.floor(Math.random() * icons.length)];
        
-       // Random properties
-       const left = Math.random() * 100; // 0 to 100vw
-       const duration = Math.random() * 5 + 5; // 5s to 10s fall duration
-       const size = Math.random() * 1.5 + 1; // 1rem to 2.5rem size
-       const sway = (Math.random() - 0.5) * 200; // -100px to 100px horizontal sway
+       const left = Math.random() * 100; 
+       const duration = Math.random() * 5 + 5; 
+       const size = Math.random() * 1.5 + 1; 
+       const sway = (Math.random() - 0.5) * 200; 
        
        item.style.left = `${left}%`;
        item.style.fontSize = `${size}rem`;
        item.style.animation = `xmas-fall ${duration}s linear forwards`;
        item.style.setProperty('--sway', `${sway}px`);
        
-       // Add text shadow for better visibility
-       item.style.textShadow = '0 0 5px rgba(255,255,255,0.5), 0 0 2px rgba(0,0,0,0.1)';
+       // Style adjustments
+       if (theme === 'blackpink') {
+           item.style.filter = 'drop-shadow(0 0 5px rgba(236, 72, 153, 0.8))';
+       } else if (theme === 'aespa') {
+           item.style.filter = 'drop-shadow(0 0 8px rgba(167, 139, 250, 0.8))';
+       } else if (theme === 'rosie') {
+           item.style.filter = 'drop-shadow(0 0 5px rgba(225, 29, 72, 0.6))';
+       } else if (theme === 'pkl') {
+           item.style.filter = 'drop-shadow(0 0 5px rgba(6, 182, 212, 0.6))'; // Cyan/Blue glow
+       } else if (theme === 'showgirl') {
+           item.style.filter = 'drop-shadow(0 0 8px rgba(249, 115, 22, 0.6))'; // Orange/Teal glow
+       } else {
+           item.style.textShadow = '0 0 5px rgba(255,255,255,0.5), 0 0 2px rgba(0,0,0,0.1)';
+       }
 
        container.appendChild(item);
        
-       // Cleanup after animation finishes
        setTimeout(() => {
          if (item && item.parentNode) {
              item.remove();
@@ -88,32 +200,34 @@ export const Layout: React.FC<LayoutProps> = ({
 
     const interval = setInterval(createItem, 800);
     return () => clearInterval(interval);
-  }, []);
+  }, [theme]);
 
-  // --- MARIAH RANDOM TRIGGER LOGIC ---
+  // --- EASTER EGG RANDOM TRIGGER LOGIC ---
   useEffect(() => {
+    if (theme === 'default') return;
+
     const interval = setInterval(() => {
         // 10% chance every 30 seconds to trigger peeking if not active
-        if (Math.random() > 0.9 && mariahState === 'hidden') {
-             triggerMariahSequence();
+        if (Math.random() > 0.9 && easterEggState === 'hidden') {
+             triggerEasterEggSequence();
         }
     }, 30000);
     return () => clearInterval(interval);
-  }, [mariahState]);
+  }, [easterEggState, theme]);
 
-  const triggerMariahSequence = () => {
-      if (mariahState !== 'hidden') return;
+  const triggerEasterEggSequence = () => {
+      if (theme === 'default' || easterEggState !== 'hidden') return;
       
       // Phase 1: Peek
-      setMariahState('peeking');
+      setEasterEggState('peeking');
       
-      // Phase 2: Scream (after 2s)
+      // Phase 2: Action (Scream or Hiss) after 2s
       setTimeout(() => {
-          setMariahState('screaming');
+          setEasterEggState('screaming');
           
-          // Phase 3: Retreat (after 4s of screaming)
+          // Phase 3: Retreat (after 4s of action)
           setTimeout(() => {
-              setMariahState('hidden');
+              setEasterEggState('hidden');
           }, 4000);
       }, 2000);
   };
@@ -130,7 +244,6 @@ export const Layout: React.FC<LayoutProps> = ({
     closeTimeoutRef.current = setTimeout(() => {
       setIsProfileOpen(false);
       if (!isEditing) {
-         // Only reset if not currently editing
          setIsEditing(false);
          setEditName(user.fullName);
          setEditId(user.studentId);
@@ -173,55 +286,168 @@ export const Layout: React.FC<LayoutProps> = ({
       setGiftOpened(true);
   };
 
+  // THEME CONSTANTS
+  const getThemeStyles = () => {
+      switch (theme) {
+          case 'xmas':
+              return {
+                  color: 'rgba(220, 38, 38, 0.6)',
+                  gradient: 'from-red-500 to-green-600',
+                  icon: '🎅',
+                  subIcon: '🎄',
+                  nameColor: 'text-red-600'
+              };
+          case 'swift':
+              return {
+                  color: 'rgba(236, 72, 153, 0.6)',
+                  gradient: 'from-pink-400 via-purple-400 to-indigo-400',
+                  icon: '🐍',
+                  subIcon: '🧣',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600'
+              };
+          case 'blackpink':
+              return {
+                  color: 'rgba(236, 72, 153, 1)',
+                  gradient: 'from-pink-500 via-fuchsia-500 to-rose-500 shadow-[0_0_40px_rgba(236,72,153,0.8)]', 
+                  icon: '👑',
+                  subIcon: '🖤',
+                  nameColor: 'text-white drop-shadow-[0_0_15px_rgba(236,72,153,1)]' 
+              };
+          case 'aespa':
+              return {
+                  color: 'rgba(167, 139, 250, 1)',
+                  gradient: 'from-slate-300 via-purple-300 to-indigo-400 shadow-[0_0_30px_rgba(167,139,250,0.8)]', 
+                  icon: '🦾',
+                  subIcon: '✨',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-slate-200 via-purple-200 to-slate-200 drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]'
+              };
+          case 'rosie':
+              return {
+                  color: 'rgba(225, 29, 72, 0.8)', // Rose Red
+                  // Warm Rose Gold / Red Gradient
+                  gradient: 'from-rose-400 via-red-500 to-rose-600 shadow-[0_0_30px_rgba(225,29,72,0.5)]',
+                  icon: '🌹',
+                  subIcon: '🍷',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-red-600'
+              };
+          case 'pkl':
+              return {
+                  color: 'rgba(6, 182, 212, 0.8)', // Cyan/Blue
+                  // Metallic Silver + Cyan Gradient
+                  gradient: 'from-slate-700 via-cyan-600 to-slate-800 shadow-[0_0_40px_rgba(6,182,212,0.5)]',
+                  icon: '🗡️',
+                  subIcon: '🦢',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-white to-cyan-200'
+              };
+          case 'showgirl':
+              return {
+                  color: 'rgba(249, 115, 22, 0.8)', // Orange
+                  // Teal & Orange Gradient
+                  gradient: 'from-teal-500 via-orange-400 to-teal-600 shadow-[0_0_40px_rgba(20,184,166,0.6)]',
+                  icon: '💃',
+                  subIcon: '💎',
+                  nameColor: 'text-transparent bg-clip-text bg-gradient-to-r from-teal-500 via-orange-400 to-teal-500 drop-shadow-lg'
+              };
+          default:
+              return {
+                  color: 'rgba(245, 158, 11, 0.6)',
+                  gradient: 'from-amber-400 to-orange-600',
+                  icon: '🦦',
+                  subIcon: null,
+                  nameColor: 'text-amber-500'
+              };
+      }
+  };
+
+  const styles = getThemeStyles();
+
+  // Easter Egg Content Map
+  const getEasterEggContent = () => {
+      if (theme === 'xmas') return { text: "IT'S TIMEEEEE!", icon: '🎄', img: "https://i.scdn.co/image/ab67616d0000b2734246e3158421f5abb75abc4f", bg: 'bg-red-100', border: 'border-red-600 text-red-600' };
+      if (theme === 'swift') return { text: "ARE YOU READY?", icon: '🐍', img: "https://em-content.zobj.net/source/microsoft-teams/337/snake_1f40d.png", bg: 'bg-green-100', border: 'border-slate-800 text-slate-800' };
+      if (theme === 'blackpink') return { text: "BLACKPINK!", icon: '🔨', img: null, bg: 'bg-slate-900', border: 'border-pink-500 text-pink-500' };
+      if (theme === 'aespa') return { text: "SUPERNOVA!", icon: '🪐', img: null, bg: 'bg-slate-900', border: 'border-purple-500 text-purple-500' };
+      if (theme === 'rosie') return { text: "APT. APT.!", icon: '⚡', img: null, bg: 'bg-rose-950', border: 'border-rose-500 text-rose-500' };
+      if (theme === 'pkl') return { text: "KHÓC BLOCK", icon: '⚔️', img: null, bg: 'bg-slate-800', border: 'border-cyan-500 text-cyan-500' };
+      // Showgirl Easter Egg
+      if (theme === 'showgirl') return { text: "OPALITE", icon: '💎', img: null, bg: 'bg-gradient-to-br from-teal-100 to-orange-100', border: 'border-orange-500 text-orange-600' };
+      return null;
+  };
+  const egg = getEasterEggContent();
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300 relative">
       
-      {/* CHRISTMAS FALLING ITEMS OVERLAY (Logged-in only) */}
-      <div ref={xmasContainerRef} className="xmas-container"></div>
+      {/* TRANSITION OVERLAY */}
+      <ThemeTransition stage={transitionStage} targetTheme={pendingTheme} />
 
-      {/* MARIAH CAREY EASTER EGG COMPONENT */}
-      <div 
-        className={`fixed bottom-0 left-0 md:left-10 z-[99999] pointer-events-none transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-            ${mariahState === 'hidden' ? 'translate-y-[120%]' : ''}
-            ${mariahState === 'peeking' ? 'translate-y-[50%]' : ''}
-            ${mariahState === 'screaming' ? 'translate-y-[0%]' : ''}
-        `}
-      >
-           <div className={`relative w-60 md:w-80 transition-transform duration-100 ${mariahState === 'screaming' ? 'animate-shake-intense origin-bottom' : ''}`}>
-               {/* The Speech Bubble (Only visible when screaming) */}
-               <div className={`absolute -top-32 -right-10 md:-right-20 bg-white border-4 border-red-600 text-red-600 p-6 rounded-[3rem] rounded-bl-none shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 transition-all duration-300 transform
-                    ${mariahState === 'screaming' ? 'opacity-100 scale-100 rotate-6' : 'opacity-0 scale-0 rotate-0'}
-               `}>
-                   <p className="text-4xl font-black tracking-tighter uppercase animate-pulse drop-shadow-md whitespace-nowrap">
-                       IT'S TIMEEEEE!
-                   </p>
-                   <div className="text-2xl absolute -top-4 -right-4 animate-bounce">🎄</div>
-                   <div className="text-2xl absolute -bottom-4 -left-4 animate-bounce delay-100">❄️</div>
-               </div>
+      {/* FALLING ITEMS OVERLAY (Only if NOT Default) */}
+      {theme !== 'default' && <div ref={fallingContainerRef} className="xmas-container"></div>}
 
-               {/* Mariah Image (Using reliable Spotify CDN) */}
-               <img 
-                   src="https://i.scdn.co/image/ab67616d0000b2734246e3158421f5abb75abc4f" 
-                   alt="Mariah" 
-                   className="w-full h-auto drop-shadow-2xl rounded-t-full border-8 border-white/30 bg-red-100" 
-               />
-               
-               {/* Peeking Eyes Overlay (Optional comedic effect for peeking stage) */}
-               {mariahState === 'peeking' && (
-                   <div className="absolute top-[20%] left-[40%] text-4xl animate-bounce">👀</div>
-               )}
-           </div>
-      </div>
+      {/* EASTER EGG POPUP */}
+      {theme !== 'default' && egg && (
+        <div 
+            className={`fixed bottom-0 left-0 md:left-10 z-[99999] pointer-events-none transition-transform duration-1000 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                ${easterEggState === 'hidden' ? 'translate-y-[120%]' : ''}
+                ${easterEggState === 'peeking' ? 'translate-y-[50%]' : ''}
+                ${easterEggState === 'screaming' ? 'translate-y-[0%]' : ''}
+            `}
+        >
+            <div className={`relative w-60 md:w-80 transition-transform duration-100 ${easterEggState === 'screaming' ? 'animate-shake-intense origin-bottom' : ''}`}>
+                {/* The Speech Bubble */}
+                <div className={`absolute -top-32 -right-10 md:-right-20 bg-white border-4 ${egg.border} p-6 rounded-[3rem] rounded-bl-none shadow-[0_10px_40px_rgba(0,0,0,0.3)] z-50 transition-all duration-300 transform
+                        ${easterEggState === 'screaming' ? 'opacity-100 scale-100 rotate-6' : 'opacity-0 scale-0 rotate-0'}
+                `}>
+                    <p className="text-3xl font-black tracking-tighter uppercase animate-pulse drop-shadow-md whitespace-nowrap">
+                        {egg.text}
+                    </p>
+                    <div className="text-2xl absolute -top-4 -right-4 animate-bounce">{egg.icon}</div>
+                </div>
 
-      {/* CHRISTMAS GREETING POPUP */}
-      {showXmasPopup && (
+                {/* The Character/Image */}
+                {theme === 'blackpink' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-pink-400 bg-black`}>
+                         <div className="text-[8rem] animate-[wiggle_0.5s_infinite]">🔨</div>
+                     </div>
+                ) : theme === 'aespa' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-purple-400 bg-gradient-to-b from-slate-900 to-black`}>
+                         <div className="text-[8rem] animate-[spin_4s_linear_infinite]">🪐</div>
+                     </div>
+                ) : theme === 'rosie' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-rose-500 bg-rose-950`}>
+                         <div className="text-[8rem] animate-[bounce_2s_infinite]">🌹</div>
+                     </div>
+                ) : theme === 'pkl' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-cyan-500 bg-slate-800`}>
+                         <div className="text-[8rem] animate-[pulse_3s_infinite] rotate-45">🗡️</div>
+                     </div>
+                ) : theme === 'showgirl' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-orange-400 bg-gradient-to-b from-teal-800 to-orange-900`}>
+                         <div className="text-[8rem] animate-[pulse_2s_infinite]">💎</div>
+                     </div>
+                ) : (
+                    <img 
+                        src={egg.img!}
+                        alt="Easter Egg" 
+                        className={`w-full h-auto drop-shadow-2xl rounded-t-full border-8 border-white/30 ${egg.bg}`} 
+                    />
+                )}
+                
+                {easterEggState === 'peeking' && (
+                    <div className="absolute top-[20%] left-[40%] text-4xl animate-bounce">👀</div>
+                )}
+            </div>
+        </div>
+      )}
+
+      {/* CHRISTMAS GREETING POPUP (Only if Xmas Theme) */}
+      {theme === 'xmas' && showXmasPopup && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
+            {/* ... Existing Christmas Popup Content ... */}
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(220,38,38,0.5)] overflow-hidden relative animate-in zoom-in-50 slide-in-from-bottom-[20%] duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group transition-all">
                 
-                {/* Festive Header Background - Changes color based on stage */}
                 <div className={`absolute top-0 inset-x-0 h-36 bg-gradient-to-b ${giftOpened ? 'from-amber-400 via-amber-500' : 'from-red-600 via-red-500'} to-transparent z-0 transition-colors duration-700`}></div>
                 
-                {/* Decorations (only in greeting mode) */}
                 {!giftOpened && (
                     <>
                         <div className="absolute top-[-20px] left-[-20px] text-[5rem] opacity-20 rotate-[-15deg] select-none animate-[wiggle_3s_ease-in-out_infinite]">❄️</div>
@@ -232,20 +458,16 @@ export const Layout: React.FC<LayoutProps> = ({
                 <div className="relative z-10 flex flex-col items-center text-center pt-12 pb-8 px-8">
                     
                     {!giftOpened ? (
-                        /* --- STAGE 1: GREETING --- */
                         <div className="w-full flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            {/* Main Icon */}
                             <div className="relative mb-6">
                                 <div className="w-28 h-28 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-2xl border-4 border-red-100 dark:border-red-900/30 z-10 relative">
                                     <span className="text-7xl animate-[bounce_2s_infinite] origin-bottom">🎅</span>
                                 </div>
-                                {/* Gift Icon */}
                                 <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-3 rounded-full border-4 border-white dark:border-slate-900 shadow-xl animate-[pulse_2s_infinite] z-50 scale-110 transform rotate-12">
                                     <Gift className="w-6 h-6" />
                                 </div>
                             </div>
 
-                            {/* Text */}
                             <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2 tracking-tight drop-shadow-sm">
                                 Giáng Sinh Vui Vẻ!
                             </h2>
@@ -253,7 +475,6 @@ export const Layout: React.FC<LayoutProps> = ({
                                 Chúc <span className="font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-lg border border-red-100 dark:border-red-900/50">{user.fullName}</span> một mùa lễ hội ấm áp, tràn đầy niềm vui và học tốt Giải phẫu nhé! 🦦❄️
                             </p>
 
-                            {/* Action Button */}
                             <button 
                                 onClick={handleOpenGift}
                                 className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold text-lg shadow-lg shadow-red-500/30 transform transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 group/btn"
@@ -263,13 +484,11 @@ export const Layout: React.FC<LayoutProps> = ({
                             </button>
                         </div>
                     ) : (
-                        /* --- STAGE 2: GIFT REVEAL --- */
                         <div className="w-full flex flex-col items-center animate-in zoom-in-90 duration-500">
                              <div className="relative mb-6">
                                 <div className="w-28 h-28 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(251,191,36,0.6)] border-4 border-amber-200 dark:border-amber-900/30 z-10 relative">
                                     <span className="text-6xl animate-[wiggle_1s_infinite]">🎁</span>
                                 </div>
-                                {/* Glowing Aura */}
                                 <div className="absolute top-0 left-0 w-full h-full rounded-full animate-ping bg-amber-400/30"></div>
                                 <div className="absolute top-[-20px] left-[50%] translate-x-[-50%] text-amber-400 animate-bounce"><Sparkles className="w-8 h-8" /></div>
                             </div>
@@ -281,7 +500,6 @@ export const Layout: React.FC<LayoutProps> = ({
                                 Rái cá gửi tặng bạn tài liệu ôn thi độc quyền nè.
                             </p>
 
-                            {/* Google Drive Link Card */}
                             <a 
                                 href="https://drive.google.com/file/d/1sqTxjLw9NdSBFmFz6gtIkwppvaTNk9u9/view?usp=drivesdk"
                                 target="_blank"
@@ -311,7 +529,6 @@ export const Layout: React.FC<LayoutProps> = ({
                     )}
                 </div>
 
-                {/* Close X */}
                 <button 
                     onClick={() => setShowXmasPopup(false)}
                     className="absolute top-4 right-4 p-2 bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 rounded-full text-white transition-colors z-50 backdrop-blur-sm"
@@ -322,42 +539,44 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
 
-      {/* OTTER FOCUS MODE OVERLAY - SMOOTH TRANSITION UPDATE */}
-      {/* We keep this rendered to allow exit animations via CSS classes */}
+      {/* FOCUS MODE OVERLAY */}
       <div 
           className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
           ${isOtterMode ? 'opacity-100 visible backdrop-blur-md bg-slate-900/60' : 'opacity-0 invisible backdrop-blur-none bg-transparent pointer-events-none'}`}
           onClick={() => setIsOtterMode(false)}
       >
           <div 
-              className={`relative max-w-lg w-full mx-4 bg-gradient-to-br from-red-500 to-emerald-600 p-1 rounded-[3rem] shadow-[0_0_100px_rgba(220,38,38,0.4)] cursor-default group transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+              className={`relative max-w-lg w-full mx-4 bg-gradient-to-br ${styles.gradient} p-1 rounded-[3rem] shadow-[0_0_100px_rgba(255,255,255,0.2)] cursor-default group transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]
               ${isOtterMode ? 'scale-100 translate-y-0 opacity-100' : 'scale-50 -translate-y-20 -translate-x-20 opacity-0'}`}
               onClick={(e) => e.stopPropagation()}
           >
               <div className="bg-white dark:bg-slate-900 rounded-[2.9rem] p-12 flex flex-col items-center text-center relative overflow-hidden">
                   {/* Background decoration */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.15),transparent_70%)]"></div>
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-red-400/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-                  <div className="absolute bottom-0 left-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl -ml-20 -mb-20"></div>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.05),transparent_70%)]"></div>
                   
-                  {/* Large Animated Otter */}
+                  {/* Large Animated Icon */}
                   <div 
                       className="relative z-10 mb-8 transform transition-transform duration-500 hover:scale-110 cursor-pointer" 
                       onClick={() => setIsOtterMode(false)}
                   >
                       <div className="text-[8rem] md:text-[10rem] leading-none animate-[bounce_3s_infinite] drop-shadow-2xl filter">
-                          🎅
+                          {styles.icon}
                       </div>
-                      {/* Sparkles */}
-                      <div className="absolute top-0 right-0 animate-pulse text-red-400"><Sparkles className="w-8 h-8" /></div>
-                      <div className="absolute bottom-4 left-4 animate-pulse delay-300 text-emerald-400"><Sparkles className="w-6 h-6" /></div>
+                      {theme !== 'default' && (
+                          <>
+                            <div className="absolute top-0 right-0 animate-pulse text-red-400"><Sparkles className="w-8 h-8" /></div>
+                            <div className="absolute bottom-4 left-4 animate-pulse delay-300 text-emerald-400"><Sparkles className="w-6 h-6" /></div>
+                          </>
+                      )}
                   </div>
 
-                  <h2 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-emerald-600 mb-4 tracking-tight">
-                      AnatomyOtter
+                  <h2 className={`text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r ${styles.gradient} mb-4 tracking-tight`}>
+                      AnatomyOtter <span className="text-2xl text-slate-400 font-mono">v1.0</span>
                   </h2>
                   <p className="text-slate-600 dark:text-slate-300 text-lg font-medium mb-8 max-w-xs mx-auto leading-relaxed">
-                      Người bạn đồng hành tin cậy trên hành trình chinh phục giải phẫu học.
+                      {theme === 'showgirl' 
+                        ? "Sẵn sàng chưa? Màn trình diễn sắp bắt đầu!" 
+                        : "Người bạn đồng hành tin cậy trên hành trình chinh phục giải phẫu học."}
                   </p>
 
                   <button 
@@ -377,27 +596,113 @@ export const Layout: React.FC<LayoutProps> = ({
             onClick={() => setIsOtterMode(true)}
           >
             <div 
-                className="w-10 h-10 bg-gradient-to-br from-red-500 to-green-600 rounded-xl flex items-center justify-center liquid-icon relative z-10"
-                style={{ '--glow-color': 'rgba(220, 38, 38, 0.6)' } as React.CSSProperties}
+                className={`w-10 h-10 bg-gradient-to-br ${styles.gradient} rounded-xl flex items-center justify-center liquid-icon relative z-10`}
+                style={{ '--glow-color': styles.color } as React.CSSProperties}
             >
-                <span className="text-2xl leading-none">🦦</span>
-                <span className="absolute -top-2 -right-1 text-base rotate-12 drop-shadow-sm">🎄</span>
+                <span className="text-2xl leading-none">{styles.icon}</span>
+                {styles.subIcon && <span className="absolute -top-2 -right-1 text-base rotate-12 drop-shadow-sm">{styles.subIcon}</span>}
             </div>
             <div className="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-2">
                 <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-tight transition-colors leading-none">
-                Anatomy<span className="text-red-600 text-glow">Otter</span>
+                {/* FIXED: Use styles.nameColor directly without hardcoded gradient override */}
+                Anatomy<span className={`text-glow ${styles.nameColor}`}>Otter</span> <span className="text-xs font-mono text-slate-400 ml-1">v1.0</span>
                 </h1>
-                <span 
-                    onClick={(e) => { e.stopPropagation(); triggerMariahSequence(); }}
-                    className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider border border-emerald-200 dark:border-emerald-800 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-900/30 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 hover:border-red-200"
-                    title="???"
-                >
-                    Xmas
-                </span>
+                {theme === 'blackpink' && (
+                    <span 
+                        onClick={(e) => { e.stopPropagation(); triggerEasterEggSequence(); }}
+                        className="text-[10px] font-bold text-pink-500 uppercase tracking-wider border border-pink-200 dark:border-pink-800 px-1.5 py-0.5 rounded bg-black/10 dark:bg-pink-900/30 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform"
+                    >
+                        In your area
+                    </span>
+                )}
+                {theme === 'aespa' && (
+                    <span 
+                        onClick={(e) => { e.stopPropagation(); triggerEasterEggSequence(); }}
+                        className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.5 rounded bg-black/10 dark:bg-indigo-900/30 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform"
+                    >
+                        Kwangya
+                    </span>
+                )}
+                {theme === 'rosie' && (
+                    <span 
+                        onClick={(e) => { e.stopPropagation(); triggerEasterEggSequence(); }}
+                        className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider border border-rose-200 dark:border-rose-800 px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-900/30 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform"
+                    >
+                        number one girl
+                    </span>
+                )}
+                {theme === 'pkl' && (
+                    <span 
+                        onClick={(e) => { e.stopPropagation(); triggerEasterEggSequence(); }}
+                        className="text-[10px] font-bold text-cyan-500 uppercase tracking-wider border border-cyan-200 dark:border-cyan-800 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform"
+                    >
+                        G1VN
+                    </span>
+                )}
+                {theme === 'showgirl' && (
+                    <span 
+                        onClick={(e) => { e.stopPropagation(); triggerEasterEggSequence(); }}
+                        className="text-[10px] font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider border border-orange-200 dark:border-orange-800 px-1.5 py-0.5 rounded bg-orange-50 dark:bg-orange-900/30 self-start md:self-auto cursor-pointer hover:scale-110 transition-transform"
+                    >
+                        Showtime
+                    </span>
+                )}
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            
+            {/* NEW: THEME SWITCHER SHORTCUT IN HEADER */}
+            <div className="relative" ref={themeDropdownRef}>
+                <button 
+                    onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
+                    className="liquid-icon relative rounded-xl text-slate-500 dark:text-slate-400 w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none bg-slate-100 dark:bg-slate-800 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+                    style={{ '--glow-color': 'rgba(236, 72, 153, 0.5)' } as React.CSSProperties}
+                    title="Đổi giao diện (Themes)"
+                >
+                    <Palette className="w-5 h-5" />
+                </button>
+
+                {isThemeDropdownOpen && (
+                    <div className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200 z-50">
+                        <div className="p-3 space-y-1">
+                            <div className="px-2 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Chọn giao diện</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {themeOptions.map((opt) => {
+                                    const isShowgirl = opt.id === 'showgirl';
+                                    const isSelected = theme === opt.id;
+                                    return (
+                                        <button
+                                            key={opt.id}
+                                            onClick={() => handleThemeChange(opt.id)}
+                                            className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 relative overflow-hidden ${
+                                                isSelected
+                                                    ? `border-current ${opt.color} ${opt.bg} ring-1 ring-current/20` 
+                                                    : isShowgirl
+                                                        ? 'border-orange-400 dark:border-orange-500 bg-gradient-to-br from-orange-50 to-teal-50 dark:from-slate-800 dark:to-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)] ring-2 ring-orange-400/30 scale-[1.02]'
+                                                        : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
+                                            }`}
+                                        >
+                                            {isShowgirl && !isSelected && (
+                                                <div className="absolute inset-0 bg-gradient-to-tr from-orange-400/20 to-transparent opacity-50 pointer-events-none animate-pulse"></div>
+                                            )}
+                                            {/* ADDED CROWN */}
+                                            {isShowgirl && <span className="absolute top-0 right-0.5 text-xs animate-pulse">👑</span>}
+
+                                            <span className={`text-2xl mb-1 ${isShowgirl && !isSelected ? 'animate-bounce' : ''}`}>{opt.icon}</span>
+                                            <span className="text-xs font-bold relative z-10">{opt.name}</span>
+                                            
+                                            {isShowgirl && !isSelected && <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-orange-500 rounded-full animate-ping"></span>}
+                                            {isSelected && <div className="w-1 h-1 rounded-full bg-current mt-1"></div>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <button 
               onClick={toggleDarkMode}
               className="liquid-icon relative rounded-xl text-slate-500 dark:text-slate-400 w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none bg-slate-100 dark:bg-slate-800"
@@ -412,7 +717,7 @@ export const Layout: React.FC<LayoutProps> = ({
                </div>
             </button>
             
-            {/* Profile Section with Hover Popup */}
+            {/* Profile Section */}
             <div 
                 className="relative z-50"
                 onMouseEnter={handleMouseEnter}
@@ -445,8 +750,11 @@ export const Layout: React.FC<LayoutProps> = ({
                   ref={dropdownRef}
                   className={`absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 transform transition-all duration-300 origin-top-right overflow-hidden ${isProfileOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'}`}
                >
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Thông tin cá nhân</p>
+                    <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
+                        <Keyboard className="w-3 h-3" /> Alt+U
+                    </span>
                   </div>
                   
                   <div className="p-4">
@@ -533,6 +841,42 @@ export const Layout: React.FC<LayoutProps> = ({
                                 <Settings className="w-4 h-4" />
                                 Chỉnh sửa thông tin
                             </button>
+
+                            {/* THEME SWITCHER (GRID UI) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Giao diện (Themes)</p>
+                                    <Music className="w-3 h-3 text-slate-400" />
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {themeOptions.map(opt => {
+                                        const isShowgirl = opt.id === 'showgirl';
+                                        const isSelected = theme === opt.id;
+                                        return (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => handleThemeChange(opt.id)}
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl border transition-all duration-200 relative overflow-hidden ${
+                                                    isSelected
+                                                        ? `border-current ${opt.color} ${opt.bg} ring-1 ring-current/30` 
+                                                        : isShowgirl
+                                                            ? 'border-orange-400 dark:border-orange-500 bg-orange-50 dark:bg-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_0_10px_rgba(249,115,22,0.4)] ring-1 ring-orange-400/30'
+                                                            : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400'
+                                                }`}
+                                            >
+                                                {/* ADDED CROWN */}
+                                                {isShowgirl && <span className="absolute top-0 right-1 text-[10px]">👑</span>}
+
+                                                {isShowgirl && !isSelected && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-orange-500 rounded-full animate-ping"></span>}
+                                                <span className={`text-xl mb-1 relative z-10 ${isShowgirl && !isSelected ? 'animate-bounce' : ''}`}>{opt.icon}</span>
+                                                <span className="text-xs font-bold relative z-10">{opt.name}</span>
+                                                {isSelected && <div className="absolute inset-0 bg-current opacity-5"></div>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
                         </div>
                     )}
                   </div>
@@ -556,15 +900,15 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
       
       {/* Otter Chat Widget */}
-      <OtterChat />
+      <OtterChat theme={theme} />
 
-      {/* Feedback Button - Conditional Render */}
+      {/* Feedback Button */}
       {showFeedback && (
           <a 
               href="https://mail.google.com/mail/?view=cm&fs=1&to=datken100@gmail.com&su=[Góp ý] AnatomyOtter"
               target="_blank"
               rel="noopener noreferrer"
-              className="fixed bottom-6 left-6 z-40 flex items-center gap-0 hover:gap-2 px-3 hover:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-lg text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 group hover:shadow-blue-500/20"
+              className="fixed bottom-6 left-6 z-40 flex items-center gap-0 hover:gap-2 px-3 hover:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-lg text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-300 group hover:shadow-amber-500/20"
           >
               <Mail className="w-5 h-5" />
               <span className="max-w-0 overflow-hidden group-hover:max-w-xs opacity-0 group-hover:opacity-100 transition-all duration-300 text-sm font-bold whitespace-nowrap">
@@ -574,5 +918,4 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
     </div>
   );
-};
-    
+}

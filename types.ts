@@ -3,6 +3,7 @@ export enum AppMode {
   HOME = 'HOME',
   MCQ = 'MCQ', // Trắc nghiệm
   STATION = 'STATION', // Chạy trạm
+  FLASHCARD = 'FLASHCARD', // Thẻ ghi nhớ
 }
 
 export interface UserProfile {
@@ -68,4 +69,29 @@ export interface MentorResponse {
         step: string;
         details: string;
     }[]; // Các bước cải thiện
+}
+
+// Flashcard Interfaces
+
+export interface FlashcardSRData {
+  interval: number; // Khoảng cách (ngày) cho lần ôn tiếp theo. 0 nghĩa là đang học lại.
+  ease: number; // Hệ số dễ (mặc định 2.5)
+  dueDate: number; // Timestamp thời điểm cần ôn tập
+  reviewCount: number; // Số lần đã ôn
+  state: 'NEW' | 'LEARNING' | 'REVIEW' | 'RELEARNING';
+}
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  srData?: FlashcardSRData; // Optional: Dữ liệu Spaced Repetition
+}
+
+export interface FlashcardDeck {
+  id: string;
+  title: string;
+  description: string;
+  cards: Flashcard[];
+  createdAt: number;
 }

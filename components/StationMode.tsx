@@ -3,12 +3,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { generateStationQuestionFromImage, analyzeResultWithOtter } from '../services/geminiService';
 import { StationItem, MentorResponse } from '../types';
 import { Play, Timer, ArrowRight, CheckCircle, Eye, EyeOff, Activity, FileText, Crosshair, Database, Sparkles, FileUp, Loader2, ZoomIn, ZoomOut, RotateCcw, Check, X, ThumbsUp, ShieldAlert, AlertCircle, Lightbulb, List, Search, Book, ChevronLeft, Edit3 } from 'lucide-react';
+import { ThemeType } from '../App';
 
 // Declare pdfjsLib globally
 declare const pdfjsLib: any;
 
 interface StationModeProps {
   onBack: () => void;
+  theme: ThemeType;
 }
 
 enum StationStep {
@@ -78,7 +80,7 @@ const checkAnswer = (userAns: string, correctAns: string): boolean => {
     return false;
 };
 
-export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
+export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
   const [step, setStep] = useState<StationStep>(StationStep.SETUP);
   const [stations, setStations] = useState<StationItem[]>([]);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
@@ -102,6 +104,119 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mentorSectionRef = useRef<HTMLDivElement>(null);
+
+  // --- THEME SYNC LOGIC ---
+  const getThemeStyles = () => {
+      switch(theme) {
+          case 'xmas': return {
+              headerGradient: 'from-emerald-600 to-teal-600', // Keep green dominant for Station/Xmas
+              headerIconBg: 'bg-white/20',
+              headerText: 'text-teal-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20',
+              fileBorderHover: 'hover:border-emerald-400',
+              sectionSelected: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800',
+              sectionHover: 'hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20',
+              inputFocus: 'focus:ring-emerald-500',
+              rangeColor: 'text-emerald-400',
+              primaryBtn: 'from-red-600 to-emerald-600 hover:from-red-500 hover:to-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+          };
+          case 'swift': return {
+              headerGradient: 'from-purple-600 to-indigo-600',
+              headerIconBg: 'bg-white/20',
+              headerText: 'text-purple-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-purple-500 bg-purple-50 dark:bg-purple-900/20',
+              fileBorderHover: 'hover:border-purple-400',
+              sectionSelected: 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800',
+              sectionHover: 'hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20',
+              inputFocus: 'focus:ring-purple-500',
+              rangeColor: 'text-purple-400',
+              primaryBtn: 'from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+          };
+          case 'blackpink': return {
+              headerGradient: 'from-slate-900 to-pink-900',
+              headerIconBg: 'bg-pink-500/30',
+              headerText: 'text-pink-100',
+              headerGlow: 'text-glow',
+              fileBorderActive: 'border-pink-500 bg-pink-900/10',
+              fileBorderHover: 'hover:border-pink-400',
+              sectionSelected: 'bg-slate-800 border-pink-500 text-pink-400',
+              sectionHover: 'hover:border-pink-400 hover:bg-slate-800',
+              inputFocus: 'focus:ring-pink-500',
+              rangeColor: 'text-pink-500',
+              primaryBtn: 'from-slate-900 to-pink-600 hover:from-black hover:to-pink-500 shadow-[0_0_20px_rgba(236,72,153,0.4)]'
+          };
+          case 'aespa': return {
+              headerGradient: 'from-indigo-900 to-slate-800',
+              headerIconBg: 'bg-indigo-500/30',
+              headerText: 'text-indigo-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-indigo-500 bg-indigo-900/20',
+              fileBorderHover: 'hover:border-indigo-400',
+              sectionSelected: 'bg-slate-800 border-indigo-400 text-indigo-300',
+              sectionHover: 'hover:border-indigo-400 hover:bg-slate-800',
+              inputFocus: 'focus:ring-indigo-500',
+              rangeColor: 'text-indigo-400',
+              primaryBtn: 'from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]'
+          };
+          case 'rosie': return {
+              headerGradient: 'from-red-700 to-rose-800',
+              headerIconBg: 'bg-rose-500/30',
+              headerText: 'text-rose-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-rose-500 bg-rose-50 dark:bg-rose-900/20',
+              fileBorderHover: 'hover:border-rose-400',
+              sectionSelected: 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800',
+              sectionHover: 'hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20',
+              inputFocus: 'focus:ring-rose-500',
+              rangeColor: 'text-rose-400',
+              primaryBtn: 'from-red-700 to-rose-600 hover:from-red-600 hover:to-rose-500 shadow-[0_0_20px_rgba(225,29,72,0.4)]'
+          };
+          case 'pkl': return {
+              // Cyan/Blue + Slate
+              headerGradient: 'from-slate-800 via-cyan-900 to-slate-900',
+              headerIconBg: 'bg-white/10',
+              headerText: 'text-cyan-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-cyan-500 bg-slate-800',
+              fileBorderHover: 'hover:border-cyan-400',
+              sectionSelected: 'bg-slate-800 border-cyan-500 text-cyan-400',
+              sectionHover: 'hover:border-cyan-400 hover:bg-slate-800',
+              inputFocus: 'focus:ring-cyan-500',
+              rangeColor: 'text-cyan-500',
+              primaryBtn: 'from-slate-700 to-slate-900 hover:from-slate-600 hover:to-slate-800 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.4)]'
+          };
+          case 'showgirl': return {
+              // Teal & Orange
+              headerGradient: 'from-orange-600 to-teal-600',
+              headerIconBg: 'bg-white/20',
+              headerText: 'text-teal-50',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-orange-500 bg-orange-50 dark:bg-orange-900/20',
+              fileBorderHover: 'hover:border-orange-400',
+              sectionSelected: 'bg-teal-50 dark:bg-teal-900/10 border-teal-200 dark:border-teal-800',
+              sectionHover: 'hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20',
+              inputFocus: 'focus:ring-orange-500',
+              rangeColor: 'text-orange-400',
+              primaryBtn: 'from-orange-500 via-orange-400 to-teal-500 hover:from-orange-400 hover:to-teal-400 shadow-[0_0_20px_rgba(249,115,22,0.4)]'
+          };
+          default: return {
+              headerGradient: 'from-emerald-600 to-teal-600',
+              headerIconBg: 'bg-white/20',
+              headerText: 'text-teal-100',
+              headerGlow: 'text-glow-white',
+              fileBorderActive: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20',
+              fileBorderHover: 'hover:border-emerald-400',
+              sectionSelected: 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800',
+              sectionHover: 'hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+              inputFocus: 'focus:ring-blue-500',
+              rangeColor: 'text-emerald-400',
+              primaryBtn: 'from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-[0_0_20px_rgba(16,185,129,0.3)]'
+          };
+      }
+  };
+  const themeStyle = getThemeStyles();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -380,16 +495,16 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
         {/* GRID LAYOUT */}
         <div className="space-y-8">
 
-            {/* CARD 1: HEADER */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-white shadow-xl animate-fade-up" style={{ animationDelay: '0ms' }}>
+            {/* CARD 1: HEADER (THEMED) */}
+            <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${themeStyle.headerGradient} p-8 text-white shadow-xl animate-fade-up`} style={{ animationDelay: '0ms' }}>
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
                 <div className="relative z-10 flex items-center gap-6">
-                    <div className="w-20 h-20 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-inner">
+                    <div className={`w-20 h-20 ${themeStyle.headerIconBg} backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-inner`}>
                         <Activity className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
                     <div>
-                        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-glow-white">Chạy Trạm (Xmas)</h1>
-                        <p className="text-teal-100 text-lg">Hệ thống sử dụng thuật toán quét song song để tạo trạm siêu tốc.</p>
+                        <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${themeStyle.headerGlow}`}>{theme === 'showgirl' ? "Chạy Trạm (Showtime)" : "Chạy Trạm (Spot Test)"}</h1>
+                        <p className={`text-lg ${themeStyle.headerText}`}>{theme === 'showgirl' ? "Sân khấu đã sẵn sàng. Hệ thống sẽ kiểm tra phản xạ của bạn dưới ánh đèn sân khấu." : "Hệ thống sử dụng thuật toán quét song song để tạo trạm siêu tốc."}</p>
                     </div>
                 </div>
             </div>
@@ -401,14 +516,14 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     {/* LEFT: UPLOAD SOURCE */}
                     <div>
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                            <Database className="w-5 h-5 text-emerald-500" />
+                            <Database className="w-5 h-5 text-slate-400" />
                             Nguồn dữ liệu gốc (PDF)
                         </h3>
                         
                         <div 
                             onClick={() => fileInputRef.current?.click()}
                             className={`border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 group
-                            ${pdfFile ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-slate-300 dark:border-slate-700 hover:border-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                            ${pdfFile ? themeStyle.fileBorderActive : `border-slate-300 dark:border-slate-700 ${themeStyle.fileBorderHover} hover:bg-slate-50 dark:hover:bg-slate-800`}`}
                         >
                             <input 
                                 type="file" 
@@ -420,11 +535,11 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                             
                             {pdfFile ? (
                                 <div className="flex flex-col items-center gap-2 animate-in zoom-in">
-                                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-800 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-300">
-                                        <CheckCircle className="w-6 h-6" />
+                                    <div className="w-12 h-12 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center shadow-sm">
+                                        <CheckCircle className="w-6 h-6 text-green-500" />
                                     </div>
                                     <p className="font-bold text-slate-700 dark:text-slate-200 text-sm break-all px-2">{pdfFile.name}</p>
-                                    <span className="text-xs text-emerald-600 dark:text-emerald-400">Nhấn để thay đổi file</span>
+                                    <span className="text-xs opacity-70">Nhấn để thay đổi file</span>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center gap-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
@@ -458,7 +573,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                                             setSelectedSection(sec);
                                             setTopic(''); // Reset specific topic for user input
                                         }} 
-                                        className="w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+                                        className={`w-full text-left px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-300 transition-all ${themeStyle.sectionHover}`}
                                     >
                                         {sec.name}
                                     </button>
@@ -467,9 +582,9 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                         ) : (
                             // STEP 2: INPUT SPECIFIC TOPIC
                             <div className="animate-in fade-in slide-in-from-right-4">
-                                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                                <div className={`rounded-xl p-4 mb-4 ${themeStyle.sectionSelected}`}>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Đang chọn chương</span>
+                                        <span className="text-xs font-bold uppercase tracking-wider opacity-70">Đang chọn chương</span>
                                         <button 
                                             onClick={() => setSelectedSection(null)}
                                             className="text-xs text-slate-400 hover:text-blue-500 flex items-center gap-1"
@@ -477,24 +592,43 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                                             <RotateCcw className="w-3 h-3" /> Chọn lại
                                         </button>
                                     </div>
-                                    <p className="font-bold text-slate-800 dark:text-white text-lg">{selectedSection.name}</p>
+                                    <p className="font-bold text-lg">{selectedSection.name}</p>
                                 </div>
 
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                                    Chủ đề chính (để AI tạo câu hỏi):
+                                    {theme === 'showgirl' ? (
+                                        <span className="flex items-center gap-2 text-orange-500 font-bold uppercase tracking-wide animate-pulse">
+                                            <Sparkles className="w-4 h-4" /> Tâm điểm màn trình diễn (Spotlight Focus)
+                                        </span>
+                                    ) : (
+                                        "Chủ đề chính (để AI tạo câu hỏi):"
+                                    )}
                                 </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={topic}
-                                        onChange={(e) => setTopic(e.target.value)}
-                                        placeholder={`Ví dụ: ${selectedSection.keywords.slice(0, 3).join(', ')}...`}
-                                        className="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-slate-900 dark:text-white"
-                                    />
-                                    <Edit3 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <div className="relative group">
+                                    {theme === 'showgirl' && (
+                                        <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-400 via-orange-500 to-teal-400 rounded-xl opacity-60 group-hover:opacity-100 blur transition duration-1000 group-hover:duration-200"></div>
+                                    )}
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={topic}
+                                            onChange={(e) => setTopic(e.target.value)}
+                                            placeholder={theme === 'showgirl' ? "VD: Vũ điệu Van tim, Khúc ca Thần kinh..." : `Ví dụ: ${selectedSection.keywords.slice(0, 3).join(', ')}...`}
+                                            className={`w-full p-3 pl-10 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl focus:border-transparent outline-none transition-all text-slate-900 dark:text-white 
+                                                ${theme === 'showgirl' ? 'bg-white/90 dark:bg-slate-900/90 border-orange-300 dark:border-orange-700 focus:ring-2 focus:ring-orange-500 text-lg font-medium shadow-inner' : themeStyle.inputFocus}
+                                            `}
+                                        />
+                                        {theme === 'showgirl' ? (
+                                            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500 animate-spin-slow" />
+                                        ) : (
+                                            <Edit3 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        )}
+                                    </div>
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 italic">
-                                    * Nhập cụ thể (VD: "Van tim", "Cơ vùng đùi") để câu hỏi tập trung hơn, hoặc để trống để AI tự chọn trong chương.
+                                    {theme === 'showgirl' 
+                                        ? "* Hãy chọn 'đạo cụ' cụ thể (VD: Xương đùi, Cơ vai) để màn trình diễn thêm tỏa sáng, hoặc để trống để AI tự biên đạo."
+                                        : "* Nhập cụ thể (VD: \"Van tim\", \"Cơ vùng đùi\") để câu hỏi tập trung hơn, hoặc để trống để AI tự chọn trong chương."}
                                 </p>
                             </div>
                         )}
@@ -509,16 +643,16 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                 )}
             </div>
 
-            {/* CARD 3: SETTINGS */}
+            {/* CARD 3: SETTINGS (THEMED) */}
             <div className="relative rounded-3xl bg-gradient-to-br from-midnight-950 to-midnight-900 border border-slate-700 p-8 shadow-2xl animate-fade-up" style={{ animationDelay: '200ms' }}>
-                <div className="absolute top-0 right-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-50"></div>
+                <div className={`absolute top-0 right-0 w-full h-1 bg-gradient-to-r ${themeStyle.headerGradient} opacity-50`}></div>
                 
                 <div className="grid md:grid-cols-2 gap-12 mb-10">
                     {/* Question Count Slider */}
                     <div className="relative">
                         <div className="flex justify-between mb-4">
                             <label className="text-sm font-bold text-slate-300">Số lượng trạm (1-10)</label>
-                            <span className="text-2xl font-bold text-emerald-400">{questionCount}</span>
+                            <span className={`text-2xl font-bold ${themeStyle.rangeColor}`}>{questionCount}</span>
                         </div>
                         <div className="relative h-10 flex items-center">
                             <input
@@ -537,7 +671,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     <div className="relative">
                         <div className="flex justify-between mb-4">
                             <label className="text-sm font-bold text-slate-300">Thời gian (giây/trạm)</label>
-                            <span className="text-2xl font-bold text-purple-400">{timePerQuestion}s</span>
+                            <span className={`text-2xl font-bold ${themeStyle.rangeColor}`}>{timePerQuestion}s</span>
                         </div>
                         <div className="relative h-10 flex items-center">
                             <input
@@ -554,14 +688,14 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack }) => {
                     </div>
                 </div>
 
-                {/* Start Button - Christmas Gradient */}
+                {/* Start Button - Themed Gradient */}
                 <button
                     onClick={handleGenerate}
                     disabled={!selectedSection || !pdfFile}
-                    className="w-full bg-gradient-to-r from-red-600 to-emerald-600 hover:from-red-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-5 rounded-2xl shadow-[0_0_20px_rgba(220,38,38,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center justify-center space-x-3 text-lg active:scale-95 relative overflow-hidden group"
+                    className={`w-full bg-gradient-to-r ${themeStyle.primaryBtn} disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-5 rounded-2xl transition-all flex items-center justify-center space-x-3 text-lg active:scale-95 relative overflow-hidden group`}
                 >
                     <Play className="w-6 h-6 fill-current" />
-                    <span>Bắt đầu thi Chạy Trạm</span>
+                    <span>{theme === 'showgirl' ? "Let the show begin!" : "Bắt đầu thi Chạy Trạm"}</span>
                 </button>
             </div>
 
