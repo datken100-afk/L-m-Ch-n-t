@@ -437,6 +437,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-red-400 dark:text-red-500',
               name: 'text-red-700 dark:text-red-200',
               id: 'text-red-400 dark:text-red-400',
+              dropdownHeader: 'bg-red-50 dark:bg-red-900/30 border-red-100 dark:border-red-800',
               editBtn: 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20',
               apiKeyBtn: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800 dark:hover:bg-red-900/30',
               logoutBtn: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
@@ -447,6 +448,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-purple-400 dark:text-purple-500',
               name: 'text-purple-700 dark:text-purple-200',
               id: 'text-purple-400 dark:text-purple-400',
+              dropdownHeader: 'bg-purple-50 dark:bg-purple-900/30 border-purple-100 dark:border-purple-800',
               editBtn: 'border-purple-200 text-purple-600 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/20',
               apiKeyBtn: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800 dark:hover:bg-purple-900/30',
               logoutBtn: 'text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20'
@@ -457,6 +459,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-pink-400 dark:text-pink-500',
               name: 'text-pink-700 dark:text-pink-200',
               id: 'text-pink-400 dark:text-pink-400',
+              dropdownHeader: 'bg-pink-50 dark:bg-pink-900/30 border-pink-100 dark:border-pink-800',
               editBtn: 'border-pink-200 text-pink-600 hover:bg-pink-50 dark:border-pink-800 dark:text-pink-400 dark:hover:bg-pink-900/20',
               apiKeyBtn: 'bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-300 dark:border-pink-800 dark:hover:bg-pink-900/30',
               logoutBtn: 'text-pink-600 hover:bg-pink-50 dark:text-pink-400 dark:hover:bg-pink-900/20'
@@ -467,6 +470,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-indigo-400 dark:text-indigo-500',
               name: 'text-indigo-700 dark:text-indigo-200',
               id: 'text-indigo-400 dark:text-indigo-400',
+              dropdownHeader: 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-100 dark:border-indigo-800',
               editBtn: 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-800 dark:text-indigo-400 dark:hover:bg-indigo-900/20',
               apiKeyBtn: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800 dark:hover:bg-indigo-900/30',
               logoutBtn: 'text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20'
@@ -477,6 +481,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-rose-400 dark:text-rose-500',
               name: 'text-rose-700 dark:text-rose-200',
               id: 'text-rose-400 dark:text-rose-400',
+              dropdownHeader: 'bg-rose-50 dark:bg-rose-900/30 border-rose-100 dark:border-rose-800',
               editBtn: 'border-rose-200 text-rose-600 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/20',
               apiKeyBtn: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800 dark:hover:bg-rose-900/30',
               logoutBtn: 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/20'
@@ -487,6 +492,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-cyan-400 dark:text-cyan-500',
               name: 'text-cyan-700 dark:text-cyan-200',
               id: 'text-cyan-400 dark:text-cyan-400',
+              dropdownHeader: 'bg-cyan-50 dark:bg-cyan-900/30 border-cyan-100 dark:border-cyan-800',
               editBtn: 'border-cyan-200 text-cyan-600 hover:bg-cyan-50 dark:border-cyan-800 dark:text-cyan-400 dark:hover:bg-cyan-900/20',
               apiKeyBtn: 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100 dark:bg-cyan-900/20 dark:text-cyan-300 dark:border-cyan-800 dark:hover:bg-cyan-900/30',
               logoutBtn: 'text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-900/20'
@@ -498,6 +504,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-orange-400 dark:text-orange-500',
               name: 'text-orange-800 dark:text-orange-100',
               id: 'text-orange-500 dark:text-orange-400',
+              dropdownHeader: 'bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border-orange-100 dark:border-orange-800',
               editBtn: 'border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-300 dark:hover:bg-orange-900/20',
               apiKeyBtn: 'bg-gradient-to-r from-orange-50 to-amber-50 text-orange-700 border-orange-200 hover:from-orange-100 hover:to-amber-100 dark:from-orange-900/20 dark:to-amber-900/20 dark:text-orange-300 dark:border-orange-800',
               logoutBtn: 'text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
@@ -509,6 +516,7 @@ export const Layout: React.FC<LayoutProps> = ({
               label: 'text-slate-400',
               name: 'text-slate-900 dark:text-white',
               id: 'text-slate-500 dark:text-slate-400',
+              dropdownHeader: 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800',
               editBtn: 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800',
               apiKeyBtn: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/30',
               logoutBtn: 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
@@ -1264,9 +1272,9 @@ export const Layout: React.FC<LayoutProps> = ({
                {/* Dropdown Popup */}
                <div 
                   ref={dropdownRef}
-                  className={`absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 transform transition-all duration-300 origin-top-right overflow-hidden ${isProfileOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'}`}
+                  className={`absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border transform transition-all duration-300 origin-top-right overflow-hidden ${isProfileOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'} ${profileTheme.dropdownHeader.split(' ').filter(c => c.includes('border')).join(' ').replace('border-', 'border-')}`}
                >
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
+                  <div className={`p-4 border-b flex justify-between items-center ${profileTheme.dropdownHeader}`}>
                     <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${profileTheme.label}`}>Thông tin cá nhân</p>
                     <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                         <Keyboard className="w-3 h-3" /> Alt+U
@@ -1364,7 +1372,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     )}
                   </div>
 
-                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                  <div className={`p-2 border-t ${profileTheme.dropdownHeader.split(' ').filter(c => c.includes('border')).join(' ')} bg-slate-50 dark:bg-slate-800/30`}>
                     <button 
                         onClick={onLogout}
                         className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${profileTheme.logoutBtn}`}
