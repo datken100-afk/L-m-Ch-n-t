@@ -2,14 +2,23 @@
 import { GoogleGenAI, Type, Schema, GenerateContentResponse } from "@google/genai";
 import { Difficulty, GeneratedMCQResponse, GeneratedStationResponse, MentorResponse, StationItem } from "../types";
 
-// Lấy API Key từ biến môi trường
-const apiKey = process.env.API_KEY || '';
+// Storage Key for User's Custom API Key
+export const STORAGE_API_KEY = 'OTTER_API_KEY';
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey });
+// Helper to get the active client instance dynamically
+const getAI = () => {
+    const customKey = localStorage.getItem(STORAGE_API_KEY);
+    // Prioritize custom key, fallback to env
+    const key = customKey && customKey.trim().length > 0 ? customKey : (process.env.API_KEY || '');
+    
+    if (!key) {
+        // Throw a specific error that UI can catch to show the Key Modal
+        throw new Error("MISSING_API_KEY"); 
+    }
+    return new GoogleGenAI({ apiKey: key });
+};
 
 // OPTIMIZATION: Use Gemini 2.5 Flash exclusively.
-// It is the most cost-effective and fastest model for high-concurrency apps.
 const MODEL_MCQ = "gemini-2.5-flash"; 
 const MODEL_VISION = "gemini-2.5-flash"; 
 const MODEL_CHAT = "gemini-2.5-flash";
@@ -20,8 +29,6 @@ interface ContentFile {
 }
 
 // OPTIMIZATION: Strict Token Limits.
-// Reduced limits to ensure we stay within free/low-tier quotas even with many users.
-// 60k chars is roughly 15k tokens.
 const LIMIT_THEORY_CHARS = 60000; 
 const LIMIT_CLINICAL_CHARS = 30000; 
 const LIMIT_SAMPLE_CHARS = 20000;
@@ -55,6 +62,11 @@ async function retryGeminiCall<T>(
       if (error.status === 404 || (error.message && error.message.includes("not found"))) {
           throw new Error(`Lỗi Model AI (${error.status}): Không tìm thấy Model. Vui lòng Redeploy code mới nhất.`);
       }
+      
+      // Invalid Key Error
+      if (error.status === 400 && error.message?.includes("API key")) {
+          throw new Error("INVALID_API_KEY");
+      }
 
       if (isRateLimit) {
         if (i === retries - 1) break; 
@@ -69,54 +81,48 @@ async function retryGeminiCall<T>(
   
   const cleanMsg = lastError?.message || "Unknown error";
   if (cleanMsg.includes("quota") || cleanMsg.includes("RESOURCE_EXHAUSTED")) {
-      throw new Error("Đã hết hạn mức sử dụng AI (Quota Exceeded). Hệ thống đang quá tải, vui lòng thử lại sau ít phút.");
+      // Return a specific flag string that UI can detect
+      throw new Error("QUOTA_EXCEEDED");
   }
   throw new Error(`Lỗi kết nối AI: ${cleanMsg}`);
 }
 
 // --- INTELLIGENT CONTEXT FILTERING ---
-// Instead of truncating randomly, we find chunks containing keywords from the topic.
 function filterRelevantContent(content: string, topic: string, limit: number): string {
     if (!topic || topic.trim().length < 2) {
-        return content.substring(0, limit); // Fallback to simple truncation
+        return content.substring(0, limit); 
     }
 
-    const keywords = topic.toLowerCase().split(/\s+/).filter(w => w.length > 2); // Split topic into keywords
+    const keywords = topic.toLowerCase().split(/\s+/).filter(w => w.length > 2); 
     if (keywords.length === 0) return content.substring(0, limit);
 
-    // Split content into paragraphs or logical chunks (approx 500 chars or double newline)
     const chunks = content.split(/\n\s*\n/); 
     
-    // Score each chunk based on keyword density
     const scoredChunks = chunks.map(chunk => {
         const lowerChunk = chunk.toLowerCase();
         let score = 0;
         keywords.forEach(kw => {
-            if (lowerChunk.includes(kw)) score += 3; // High value for exact keyword
+            if (lowerChunk.includes(kw)) score += 3; 
         });
-        // Bonus for "Introduction" or "Definition" style words if score > 0
         if (score > 0 && (lowerChunk.includes("khái niệm") || lowerChunk.includes("định nghĩa") || lowerChunk.includes("chức năng"))) {
             score += 1;
         }
         return { text: chunk, score };
     });
 
-    // Sort by score descending
     scoredChunks.sort((a, b) => b.score - a.score);
 
     let result = "";
     let currentLen = 0;
 
-    // Reconstruct content prioritizing high scores
     for (const chunk of scoredChunks) {
-        if (chunk.score === 0 && currentLen > limit / 2) continue; // Skip irrelevant chunks if we have enough data
+        if (chunk.score === 0 && currentLen > limit / 2) continue; 
         if (currentLen + chunk.text.length > limit) break;
         
         result += chunk.text + "\n\n";
         currentLen += chunk.text.length;
     }
 
-    // If result is too short (topic didn't match well), append intro text
     if (currentLen < Math.min(limit, 5000)) {
         const remaining = limit - currentLen;
         result += "\n--- Additional Context ---\n" + content.substring(0, remaining);
@@ -131,9 +137,8 @@ export const generateMCQQuestions = async (
   difficulties: Difficulty[],
   files: { theory?: ContentFile[]; clinical?: ContentFile[]; sample?: ContentFile[] } = {}
 ): Promise<GeneratedMCQResponse> => {
-  if (!apiKey) throw new Error("Chưa cấu hình API Key.");
+  const ai = getAI();
 
-  // Optimized Prompt
   let systemInstruction = `
     Bạn là giáo sư Y khoa. Tạo ${count} câu trắc nghiệm giải phẫu về chủ đề "${topic}".
     Độ khó: ${difficulties.join(', ')}.
@@ -167,7 +172,6 @@ export const generateMCQQuestions = async (
 
   const parts: any[] = [];
 
-  // Helper to truncate AND filter content efficiently
   const addContentParts = (fileItems: ContentFile[] | undefined, sectionTitle: string, charLimit: number) => {
     if (!fileItems || fileItems.length === 0) return;
 
@@ -180,13 +184,11 @@ export const generateMCQQuestions = async (
 
         if (item.content && item.isText) {
              const remaining = charLimit - currentChars;
-             // USE THE INTELLIGENT FILTER HERE
              const relevantContent = filterRelevantContent(item.content, topic, remaining);
              
              parts.push({ text: relevantContent });
              currentChars += relevantContent.length;
         } else if (item.content && !item.isText) {
-             // Fallback for Images (rarely used in text mode but kept for type safety)
              parts.push({ text: item.content.substring(0, 1000) });
         }
     }
@@ -223,7 +225,7 @@ export const generateStationQuestionFromImage = async (
     base64Image: string,
     topic: string
 ): Promise<{ questions: any[], isValid: boolean }> => {
-    if (!apiKey) throw new Error("API Key missing.");
+    const ai = getAI();
 
     const systemInstruction = `
         Bạn là trạm trưởng thi chạy trạm giải phẫu.
@@ -252,7 +254,6 @@ export const generateStationQuestionFromImage = async (
         required: ["isValid", "questions"]
     };
 
-    // Cleanup Base64 header if present
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
 
     return retryGeminiCall(async () => {
@@ -280,7 +281,7 @@ export const generateStationQuestionFromImage = async (
 };
 
 export const chatWithOtter = async (history: any[], newMessage: string, image?: string): Promise<string> => {
-    if (!apiKey) throw new Error("API Key missing.");
+    const ai = getAI();
 
     let parts: any[] = [];
     if (image) {
@@ -289,11 +290,9 @@ export const chatWithOtter = async (history: any[], newMessage: string, image?: 
     }
     parts.push({ text: newMessage });
 
-    // Convert history to Gemini format, excluding the current new message
-    // Limit history to last 4 turns to save tokens
     const recentHistory = history.slice(-8).map(h => ({
         role: h.role === 'model' ? 'model' : 'user',
-        parts: [{ text: h.text }] // Simplified for history
+        parts: [{ text: h.text }] 
     }));
 
     return retryGeminiCall(async () => {
@@ -314,6 +313,8 @@ export const chatWithOtter = async (history: any[], newMessage: string, image?: 
 };
 
 export const analyzeResultWithOtter = async (topic: string, stats: any): Promise<MentorResponse> => {
+    const ai = getAI();
+    
     const systemInstruction = `
         Bạn là Rái Cá Mentor. Phân tích kết quả thi giải phẫu của sinh viên.
         Phong cách: Vui vẻ, động viên, nhưng chuyên môn cao. Dùng emoji 🦦.
@@ -341,7 +342,7 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
 
     return retryGeminiCall(async () => {
         const response = await ai.models.generateContent({
-            model: MODEL_MCQ, // Use Flash
+            model: MODEL_MCQ, 
             contents: {
                 role: 'user',
                 parts: [{ text: `Chủ đề: ${topic}. Kết quả: ${JSON.stringify(stats)}. Hãy nhận xét.` }]
