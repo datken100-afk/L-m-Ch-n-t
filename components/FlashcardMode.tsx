@@ -480,11 +480,11 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                         </span>
                                     )}
                                 </div>
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex gap-2">
                                     <button onClick={() => handleEditDeck(deck)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500">
                                         <Edit className="w-4 h-4" />
                                     </button>
-                                    <button onClick={() => handleDeleteDeck(deck.id)} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-500">
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteDeck(deck.id); }} className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-red-500">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>

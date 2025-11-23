@@ -157,21 +157,31 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
         return () => { clearInterval(textInterval); clearInterval(progressInterval); };
     }, [step]);
 
-    // TIMER Logic
+    // FIXED TIMER LOGIC with improved dependency tracking
     useEffect(() => {
-        if (step === StationStep.RUNNING && !isGenerating && timeLeft > 0) {
-            const interval = setInterval(() => {
+        let interval: any;
+        
+        // Only run timer if we are in RUNNING mode, NOT generating, and HAVE a valid question
+        if (step === StationStep.RUNNING && !isGenerating && questionData) {
+            interval = setInterval(() => {
                 setTimeLeft(prev => {
-                    if (prev <= 1) {
-                        handleMoveToNextStation(); // Auto submit on timeout
-                        return 0;
-                    }
+                    if (prev <= 0) return 0;
                     return prev - 1;
                 });
             }, 1000);
-            return () => clearInterval(interval);
         }
-    }, [step, isGenerating, timeLeft]);
+        
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [step, isGenerating, questionData]); // Removed timeLeft to prevent constant re-creation
+
+    // Handle Time limit Expiry
+    useEffect(() => {
+        if (timeLeft === 0 && step === StationStep.RUNNING && !isGenerating && questionData) {
+            handleMoveToNextStation();
+        }
+    }, [timeLeft, step, isGenerating, questionData]);
 
     // Setup Focus on Input
     useEffect(() => {
@@ -280,6 +290,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
             if (result.isValid && result.questions.length > 0) {
                 setQuestionData(result.questions[0]);
                 setTimeLeft(timeLimit);
+                setIsGenerating(false); // SUCCESS: Only now do we stop generation
             } else {
                 // AI said NO (Wrong topic OR Text-only page): Skip silently to next candidate
                 handleSkipToNext();
@@ -288,19 +299,20 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
             console.error("Gen Error", e);
             // Error: Skip silently
             handleSkipToNext();
-        } finally {
-            setIsGenerating(false);
         }
+        // REMOVED FINALLY BLOCK to prevent overwriting state during recursion
     };
 
     // Called when AI rejects image -> Try next candidate WITHOUT counting as a question
     const handleSkipToNext = () => {
         const nextIdx = currentIdx + 1;
         if (nextIdx < images.length) {
+            // IMPORTANT: Update index first, then call generation
             setCurrentIdx(nextIdx);
             generateQuestion(images[nextIdx], answerImages[nextIdx]);
         } else {
             // Ran out of ALL candidates
+            setIsGenerating(false); // Stop loading indicator
             if (validStationsCount === 0) {
                 alert("Rái cá không tìm thấy hình ảnh giải phẫu phù hợp với chủ đề đã chọn trong các trang này. Hãy thử chọn chương khác hoặc file khác.");
                 setStep(StationStep.SETUP);

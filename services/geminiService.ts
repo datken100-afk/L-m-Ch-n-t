@@ -145,22 +145,25 @@ export const generateMCQQuestions = async (
     Độ khó: ${difficulties.join(', ')}.
 
     QUY TẮC TỐI THƯỢNG (STRICT RULES):
-    1. **TRỌNG TÂM LÀ GIẢI PHẪU ĐẠI THỂ**:
-       - Chỉ tập trung vào cấu trúc nhìn thấy bằng mắt thường: Cơ, Xương, Khớp, Mạch máu, Thần kinh, Tạng, Liên quan giải phẫu.
-       - Hỏi về: Nguyên ủy, Bám tận, Đường đi, Chi phối, Cấp máu, Vị trí tương đối.
+    1. **TRỌNG TÂM TUYỆT ĐỐI LÀ GIẢI PHẪU ĐẠI THỂ (GROSS ANATOMY)**:
+       - Chỉ tập trung vào cấu trúc nhìn thấy bằng mắt thường trên phẫu tích: Cơ, Xương, Khớp, Mạch máu, Thần kinh, Tạng, Liên quan giải phẫu.
+       - Các câu hỏi phải xoay quanh: Nguyên ủy, Bám tận, Đường đi, Chi phối, Cấp máu, Vị trí tương đối, Hình thể ngoài, Hình thể trong (cấu trúc lớn).
     
-    2. **LOẠI BỎ MÔ HỌC/VI THỂ**:
-       - TUYỆT ĐỐI KHÔNG hỏi về cấu trúc tế bào, mô học, kính hiển vi (VD: biểu mô lát tầng, tiểu cầu thận, tế bào gan...) trừ khi trong tài liệu CHỈ CÓ thông tin đó.
-       - Nếu tài liệu chứa cả Đại thể và Vi thể, hãy LỌC BỎ Vi thể và chỉ lấy Đại thể.
+    2. **TUYỆT ĐỐI LOẠI BỎ MÔ HỌC/VI THỂ (NO HISTOLOGY)**:
+       - **CẤM** hỏi về cấu trúc tế bào, mô học, kính hiển vi.
+       - **CẤM** sử dụng các từ khóa vi thể: "biểu mô", "lát tầng", "trụ đơn", "tiểu cầu thận", "tế bào gan", "ống lượn", "quai Henle", "nang bạch huyết", "tiểu đảo Langerhans", "vi nhung mao".
+       - Nếu tài liệu đầu vào có chứa thông tin Mô học/Vi thể, hãy **LỜ ĐI** và chỉ trích xuất thông tin Đại thể.
+       - Ví dụ sai (Vi thể): "Biểu mô lót bàng quang là gì?" -> **LOẠI BỎ**.
+       - Ví dụ đúng (Đại thể): "Động mạch cấp máu cho bàng quang xuất phát từ đâu?" -> **CHẤP NHẬN**.
 
     3. **BÁM SÁT TÀI LIỆU**:
        - Chỉ sử dụng thông tin từ văn bản được cung cấp dưới đây.
-       - Nếu tài liệu không có thông tin về "${topic}", hãy trả lời trung thực hoặc tạo câu hỏi từ phần có liên quan nhất trong tài liệu đó.
+       - Nếu tài liệu không có thông tin về "${topic}", hãy trả lời trung thực hoặc tạo câu hỏi từ phần có liên quan nhất trong tài liệu đó (nhưng vẫn phải là ĐẠI THỂ).
 
     4. **ĐỊNH DẠNG JSON**:
        - Trả về định dạng JSON thuần túy.
        - 4 lựa chọn, 1 đáp án đúng.
-       - Giải thích ngắn gọn, súc tích, tập trung vào tư duy giải phẫu.
+       - Giải thích ngắn gọn, súc tích, tập trung vào tư duy giải phẫu đại thể.
   `;
 
   const schema: Schema = {
@@ -212,7 +215,7 @@ export const generateMCQQuestions = async (
   addContentParts(files.clinical, "LÂM SÀNG", LIMIT_CLINICAL_CHARS);
   addContentParts(files.sample, "ĐỀ MẪU", LIMIT_SAMPLE_CHARS);
 
-  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON về GIẢI PHẪU ĐẠI THỂ.` });
+  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON về GIẢI PHẪU ĐẠI THỂ (Tuyệt đối KHÔNG MÔ HỌC).` });
 
   return retryGeminiCall(async () => {
       const response = await ai.models.generateContent({
@@ -225,7 +228,7 @@ export const generateMCQQuestions = async (
               systemInstruction: systemInstruction,
               responseMimeType: "application/json",
               responseSchema: schema,
-              temperature: 0.5 // Lower temperature for stricter adherence to facts
+              temperature: 0.4 // Lower temperature even more for stricter adherence to Gross Anatomy
           }
       });
 
@@ -247,43 +250,34 @@ export const generateStationQuestionFromImage = async (
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
     const cleanAnswerBase64 = answerImageBase64 ? answerImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "") : null;
 
+    // EXTREMELY RELAXED SYSTEM INSTRUCTION
     const systemInstruction = `
-        Bạn là Trưởng trạm thi Chạy trạm Giải phẫu (Spot Test) cực kỳ nghiêm khắc.
+        Bạn là Trợ giảng Giải phẫu học. Nhiệm vụ là tạo câu hỏi định danh cấu trúc (Spot Test) từ hình ảnh.
         
-        NHIỆM VỤ:
-        Bạn sẽ nhận được 2 hình ảnh:
-        1. **HÌNH CÂU HỎI**: Hình giải phẫu có các đường chỉ dẫn đánh số (1, 2, 3...).
-        2. **HÌNH ĐÁP ÁN (Context)**: Trang sách liền sau, chứa đáp án (Chú thích) cho các số trên.
-
-        YÊU CẦU XỬ LÝ NGHIÊM NGẶT (STRICT LOGIC):
+        QUAN TRỌNG NHẤT: CỐ GẮNG TẠO CÂU HỎI, ĐỪNG BỎ QUA.
         
-        1. **BỘ LỌC HÌNH ẢNH (Image Filtering)**:
-           - Nếu "HÌNH CÂU HỎI" chứa toàn chữ (Text-only) hoặc KHÔNG CÓ HÌNH CẤU TRÚC GIẢI PHẪU => Trả về isValid: false.
-           - Nếu "HÌNH CÂU HỎI" **KHÔNG CÓ** các số chú thích (1, 2, 3...) hoặc đường chỉ dẫn => Trả về isValid: false.
-           - **QUAN TRỌNG: KIỂM TRA CHỦ ĐỀ**: Nếu hình ảnh mô tả cơ quan/bộ phận KHÔNG LIÊN QUAN đến "${detailedTopic || topic}" => Trả về isValid: false.
-             (Ví dụ: Người dùng chọn chủ đề "Tim", nhưng hình ảnh là "Phổi", "Dạ dày" hoặc "Xương chi trên" -> LOẠI NGAY LẬP TỨC).
+        1. **HÌNH ẢNH**: Bạn nhận được HÌNH CÂU HỎI và (tùy chọn) HÌNH ĐÁP ÁN (trang sau).
+        
+        2. **ĐIỀU KIỆN CHẤP NHẬN (Rất lỏng)**:
+           - Nếu hình ảnh có BẤT KỲ cấu trúc giải phẫu người nào (xương, cơ, tạng...), hãy đặt câu hỏi.
+           - KHÔNG cần thiết phải có số/mũi tên. Nếu không có, hãy tự chọn một cấu trúc nổi bật và hỏi vị trí của nó.
+           - CHỈ từ chối (isValid: false) nếu hình là: Trang bìa, Trang trắng hoàn toàn, Toàn chữ văn bản không có hình.
+           - Về chủ đề: Ưu tiên "${detailedTopic}", NHƯNG nếu hình thuộc chủ đề giải phẫu khác cũng VẪN CHẤP NHẬN để sinh viên có bài ôn tập.
 
-        2. **TRÍCH XUẤT ĐÁP ÁN TỪ HÌNH THỨ 2 (Contextual Extraction)**:
-           - Chọn NGẪU NHIÊN 1 con số có trên "HÌNH CÂU HỎI".
-           - Tìm số đó trong văn bản của "HÌNH ĐÁP ÁN" để lấy tên cấu trúc chính xác.
-           - **TUYỆT ĐỐI KHÔNG BỊA ĐẶT**. Đáp án (correctAnswer) PHẢI là văn bản chính xác nằm trong "HÌNH ĐÁP ÁN" tương ứng với số đã chọn.
-
-        3. **ĐÁP ÁN LINH HOẠT (Flexible Answers)**:
-           - Trong danh sách "acceptedKeywords", hãy liệt kê: 
-             - Tên chính xác trong sách.
-             - Tên Latin/Tiếng Anh (nếu có trong hình đáp án).
-             - Tên tiếng Việt đồng nghĩa thông dụng.
-             - Các từ viết tắt y khoa phổ biến (ĐM, TM, TK...).
+        3. **CHIẾN LƯỢC TẠO CÂU HỎI**:
+           - Tìm số/chữ trên hình và tra cứu ở hình đáp án.
+           - NẾU KHÔNG TÌM THẤY ĐÁP ÁN TEXT: Hãy dùng kiến thức y khoa của bạn để tự định danh cấu trúc đó.
+           - Ví dụ câu hỏi khi không có số: "Cấu trúc lớn nhất nằm ở trung tâm hình là gì?" hoặc "Đây là mặt nào của xương ...?".
 
         OUTPUT JSON:
         {
-            "isValid": boolean, // false nếu vi phạm bộ lọc (sai chủ đề, không có số, toàn chữ)
+            "isValid": boolean, // True cho 99% hình giải phẫu. False chỉ cho hình rác.
             "questions": [
                 {
-                    "questionText": "Chi tiết số [X] là gì?",
-                    "correctAnswer": "Tên chính xác trích từ HÌNH ĐÁP ÁN",
-                    "acceptedKeywords": ["tên 1", "tên 2", "tên latin", "viết tắt"],
-                    "explanation": "Giải thích ngắn gọn chức năng/vị trí dựa trên hình ảnh."
+                    "questionText": "Câu hỏi ngắn gọn",
+                    "correctAnswer": "Tên cấu trúc chính xác",
+                    "acceptedKeywords": ["tên khác", "tên latin"],
+                    "explanation": "Giải thích ngắn gọn."
                 }
             ]
         }
@@ -321,9 +315,9 @@ export const generateStationQuestionFromImage = async (
     // 2. Add Answer Image if available
     if (cleanAnswerBase64) {
         parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanAnswerBase64 } });
-        parts.push({ text: `HÌNH 1 là CÂU HỎI (cấu trúc có số). HÌNH 2 là ĐÁP ÁN (văn bản giải thích số). Hãy tìm đáp án đúng từ HÌNH 2 cho một số bất kỳ trên HÌNH 1. Chủ đề BẮT BUỘC phải là: "${detailedTopic}".` });
+        parts.push({ text: `HÌNH 1 là CÂU HỎI. HÌNH 2 là ĐÁP ÁN. Hãy tìm một chi tiết để hỏi. Nếu không có text đáp án, HÃY DÙNG KIẾN THỨC CỦA BẠN. Đừng trả về isValid=false trừ khi hình không phải giải phẫu.` });
     } else {
-        parts.push({ text: `Hãy phân tích hình ảnh giải phẫu này. Chủ đề bắt buộc: ${detailedTopic}.` });
+        parts.push({ text: `Hãy phân tích hình ảnh giải phẫu này và tạo 1 câu hỏi định danh cấu trúc. Dùng kiến thức của bạn nếu cần.` });
     }
 
     return retryGeminiCall(async () => {
@@ -337,13 +331,19 @@ export const generateStationQuestionFromImage = async (
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.1 // Very low temperature for precise extraction
+                temperature: 0.5 // More creative to allow guessing/inferring
             }
         });
         
         const text = response.text;
         if (!text) return { questions: [], isValid: false };
-        return JSON.parse(text);
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            // If JSON parsing fails, treat as invalid
+            console.error("JSON Parse Error", text);
+            return { questions: [], isValid: false };
+        }
     });
 };
 
