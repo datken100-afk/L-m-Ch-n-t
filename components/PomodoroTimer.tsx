@@ -418,7 +418,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ theme }) => {
 
                             <div className="relative w-40 h-40 flex items-center justify-center mb-6">
                                 {/* Simple SVG Ring */}
-                                <svg className="w-full h-full transform -rotate-90">
+                                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
                                     <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100 dark:text-slate-800" />
                                     <circle 
                                         cx="80" cy="80" r="70" 

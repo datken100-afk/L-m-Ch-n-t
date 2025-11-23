@@ -237,32 +237,62 @@ export const generateMCQQuestions = async (
 
 export const generateStationQuestionFromImage = async (
     base64Image: string,
+    answerImageBase64: string | null,
     topic: string,
     detailedTopic: string = ""
 ): Promise<{ questions: any[], isValid: boolean }> => {
     const ai = getAI();
 
-    const systemInstruction = `
-        Bạn là trạm trưởng thi chạy trạm giải phẫu (Spot Test) cực kỳ nghiêm khắc.
-        Nhiệm vụ: Nhìn hình ảnh lát cắt hoặc mô hình giải phẫu và đặt 1 câu hỏi định danh cấu trúc (VD: "Chi tiết số 1 là gì?", "Cấu trúc mũi tên chỉ vào?").
-        
-        Bối cảnh chương học: "${topic}".
-        ${detailedTopic ? `
-        *** CHẾ ĐỘ SIÊU KHẮT KHE (SUPER STRICT MODE) ***
-        Chủ đề yêu cầu chi tiết: "${detailedTopic}".
-        1. Bạn phải soi kỹ hình ảnh. Chỉ khi hình ảnh CÓ CHỨA cấu trúc thuộc đúng chủ đề "${detailedTopic}" thì mới đặt câu hỏi.
-        2. Nếu hình ảnh là giải phẫu nhưng KHÔNG CÓ cấu trúc nào thuộc chủ đề "${detailedTopic}" (ví dụ: yêu cầu "tim" nhưng hình là "phổi"), BẮT BUỘC trả về isValid: false.
-        3. Tuyệt đối KHÔNG cố gắng đặt câu hỏi về chủ đề khác để "lấp chỗ trống". Thà bỏ qua hình còn hơn đặt sai chủ đề.
-        ` : ""}
+    // Extract clean base64
+    const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+    const cleanAnswerBase64 = answerImageBase64 ? answerImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "") : null;
 
-        Nếu hình ảnh chứa các chi tiết giải phẫu rõ ràng (số, mũi tên, hoặc cấu trúc đặc trưng)${detailedTopic ? ` VÀ liên quan mật thiết đến "${detailedTopic}"` : ""}, hãy tạo câu hỏi.
-        Nếu hình ảnh KHÔNG RÕ RÀNG, quá mờ, hoặc KHÔNG PHẢI GIẢI PHẪU${detailedTopic ? `, hoặc KHÔNG CÓ chi tiết thuộc "${detailedTopic}"` : ""}, hãy trả về isValid: false.
+    const systemInstruction = `
+        Bạn là Trưởng trạm thi Chạy trạm Giải phẫu (Spot Test) cực kỳ nghiêm khắc.
+        
+        NHIỆM VỤ:
+        Bạn sẽ nhận được 2 hình ảnh:
+        1. **HÌNH CÂU HỎI**: Hình giải phẫu có các đường chỉ dẫn đánh số (1, 2, 3...).
+        2. **HÌNH ĐÁP ÁN (Context)**: Trang sách liền sau, chứa đáp án (Chú thích) cho các số trên.
+
+        YÊU CẦU XỬ LÝ NGHIÊM NGẶT (STRICT LOGIC):
+        
+        1. **BỘ LỌC HÌNH ẢNH (Image Filtering)**:
+           - Nếu "HÌNH CÂU HỎI" chứa toàn chữ (Text-only) hoặc KHÔNG CÓ HÌNH CẤU TRÚC GIẢI PHẪU => Trả về isValid: false.
+           - Nếu "HÌNH CÂU HỎI" **KHÔNG CÓ** các số chú thích (1, 2, 3...) hoặc đường chỉ dẫn => Trả về isValid: false.
+           - **QUAN TRỌNG: KIỂM TRA CHỦ ĐỀ**: Nếu hình ảnh mô tả cơ quan/bộ phận KHÔNG LIÊN QUAN đến "${detailedTopic || topic}" => Trả về isValid: false.
+             (Ví dụ: Người dùng chọn chủ đề "Tim", nhưng hình ảnh là "Phổi", "Dạ dày" hoặc "Xương chi trên" -> LOẠI NGAY LẬP TỨC).
+
+        2. **TRÍCH XUẤT ĐÁP ÁN TỪ HÌNH THỨ 2 (Contextual Extraction)**:
+           - Chọn NGẪU NHIÊN 1 con số có trên "HÌNH CÂU HỎI".
+           - Tìm số đó trong văn bản của "HÌNH ĐÁP ÁN" để lấy tên cấu trúc chính xác.
+           - **TUYỆT ĐỐI KHÔNG BỊA ĐẶT**. Đáp án (correctAnswer) PHẢI là văn bản chính xác nằm trong "HÌNH ĐÁP ÁN" tương ứng với số đã chọn.
+
+        3. **ĐÁP ÁN LINH HOẠT (Flexible Answers)**:
+           - Trong danh sách "acceptedKeywords", hãy liệt kê: 
+             - Tên chính xác trong sách.
+             - Tên Latin/Tiếng Anh (nếu có trong hình đáp án).
+             - Tên tiếng Việt đồng nghĩa thông dụng.
+             - Các từ viết tắt y khoa phổ biến (ĐM, TM, TK...).
+
+        OUTPUT JSON:
+        {
+            "isValid": boolean, // false nếu vi phạm bộ lọc (sai chủ đề, không có số, toàn chữ)
+            "questions": [
+                {
+                    "questionText": "Chi tiết số [X] là gì?",
+                    "correctAnswer": "Tên chính xác trích từ HÌNH ĐÁP ÁN",
+                    "acceptedKeywords": ["tên 1", "tên 2", "tên latin", "viết tắt"],
+                    "explanation": "Giải thích ngắn gọn chức năng/vị trí dựa trên hình ảnh."
+                }
+            ]
+        }
     `;
 
     const schema: Schema = {
         type: Type.OBJECT,
         properties: {
-            isValid: { type: Type.BOOLEAN, description: "True nếu ảnh chứa cấu trúc giải phẫu rõ ràng và ĐÚNG chủ đề yêu cầu." },
+            isValid: { type: Type.BOOLEAN },
             questions: {
                 type: Type.ARRAY,
                 items: {
@@ -270,32 +300,44 @@ export const generateStationQuestionFromImage = async (
                     properties: {
                         questionText: { type: Type.STRING },
                         correctAnswer: { type: Type.STRING },
+                        acceptedKeywords: { 
+                            type: Type.ARRAY, 
+                            items: { type: Type.STRING }
+                        },
                         explanation: { type: Type.STRING }
                     },
-                    required: ["questionText", "correctAnswer", "explanation"]
+                    required: ["questionText", "correctAnswer", "acceptedKeywords", "explanation"]
                 }
             }
         },
         required: ["isValid", "questions"]
     };
 
-    const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+    const parts: any[] = [];
+    
+    // 1. Add Question Image
+    parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } });
+    
+    // 2. Add Answer Image if available
+    if (cleanAnswerBase64) {
+        parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanAnswerBase64 } });
+        parts.push({ text: `HÌNH 1 là CÂU HỎI (cấu trúc có số). HÌNH 2 là ĐÁP ÁN (văn bản giải thích số). Hãy tìm đáp án đúng từ HÌNH 2 cho một số bất kỳ trên HÌNH 1. Chủ đề BẮT BUỘC phải là: "${detailedTopic}".` });
+    } else {
+        parts.push({ text: `Hãy phân tích hình ảnh giải phẫu này. Chủ đề bắt buộc: ${detailedTopic}.` });
+    }
 
     return retryGeminiCall(async () => {
         const response = await ai.models.generateContent({
             model: MODEL_VISION,
             contents: {
                 role: 'user',
-                parts: [
-                    { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } },
-                    { text: `Tạo 1 câu hỏi định danh cấu trúc quan trọng nhất trong hình này${detailedTopic ? ` CHỈ LIÊN QUAN ĐẾN ${detailedTopic}` : ""}.` }
-                ]
+                parts: parts
             },
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.5
+                temperature: 0.1 // Very low temperature for precise extraction
             }
         });
         

@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, Calendar, Clock, Trophy, Search, History, CheckCircle2, XCircle, AlertCircle, ChevronRight } from 'lucide-react';
+import { ArrowRight, Calendar, Clock, Trophy, Search, History, CheckCircle2, XCircle, AlertCircle, ChevronRight, Trash2 } from 'lucide-react';
 import { ThemeType } from '../App';
 import { ExamHistory, UserProfile } from '../types';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, deleteDoc, doc } from 'firebase/firestore';
 
 interface HistoryModeProps {
     onBack: () => void;
@@ -79,6 +79,24 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
         };
         fetchHistory();
     }, [user.uid]);
+
+    const handleDeleteExam = async (e: React.MouseEvent, historyId: string) => {
+        e.stopPropagation(); // Prevent opening details
+        if (!user.uid) return;
+
+        if (window.confirm("Bạn có chắc chắn muốn xóa lịch sử bài thi này không? Hành động này không thể hoàn tác.")) {
+            try {
+                // Optimistic UI update
+                setHistoryList(prev => prev.filter(item => item.id !== historyId));
+                
+                await deleteDoc(doc(db, 'users', user.uid, 'exam_history', historyId));
+            } catch (error) {
+                console.error("Error deleting history:", error);
+                alert("Không thể xóa lịch sử. Vui lòng thử lại.");
+                // Re-fetch if failed (optional, but simple for now)
+            }
+        }
+    };
 
     const formatDate = (timestamp: number) => {
         return new Date(timestamp).toLocaleDateString('vi-VN', {
@@ -214,9 +232,20 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
                             <button 
                                 key={item.id}
                                 onClick={() => setSelectedExam(item)}
-                                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all hover:-translate-y-1 text-left group"
+                                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all hover:-translate-y-1 text-left group relative"
                             >
-                                <div className="flex justify-between items-start mb-4">
+                                {/* Delete Button (Shows on Hover) */}
+                                <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div 
+                                        onClick={(e) => handleDeleteExam(e, item.id)}
+                                        className="p-2 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors shadow-sm border border-red-100 dark:border-red-800"
+                                        title="Xóa lịch sử"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-between items-start mb-4 pr-10">
                                     <div>
                                         <h3 className="font-bold text-slate-800 dark:text-white text-lg mb-1 line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                             {item.topic}
@@ -227,7 +256,7 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
                                             <span>{item.type}</span>
                                         </div>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-lg text-xs font-bold uppercase ${isPass ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
+                                    <div className={`px-3 py-1 rounded-lg text-xs font-bold uppercase shrink-0 ${isPass ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
                                         {percentage}%
                                     </div>
                                 </div>

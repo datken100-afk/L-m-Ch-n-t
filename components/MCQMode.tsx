@@ -203,6 +203,17 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
               primaryBtn: 'from-teal-500 to-orange-500 hover:from-teal-400 hover:to-orange-400 shadow-[0_0_30px_rgba(249,115,22,0.5)]',
               iconColor: 'hover:text-orange-500 dark:hover:text-orange-300 hover:border-orange-300'
           };
+          case '1989': return {
+              headerGradient: 'from-sky-400 via-blue-300 to-sky-400',
+              headerIconBg: 'bg-white/20 backdrop-blur-md',
+              headerText: 'text-white',
+              headerGlow: 'text-glow-white',
+              inputFocus: 'focus:ring-sky-400',
+              rangeColor: 'text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30',
+              activeDiff: 'bg-sky-50 border-sky-400 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+              primaryBtn: 'from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 shadow-[0_0_20px_rgba(56,189,248,0.4)]',
+              iconColor: 'hover:text-sky-500 dark:hover:text-sky-300 hover:border-sky-300'
+          };
           default: return {
               headerGradient: 'from-blue-600 to-indigo-600',
               headerIconBg: 'bg-white/20',
@@ -330,6 +341,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
     if (theme === 'rosie') return { bar: 'bg-[repeating-linear-gradient(45deg,#e11d48,#e11d48_10px,#fbbf24_10px,#fbbf24_20px)]', shadow: 'shadow-[0_0_20px_rgba(225,29,72,0.8)]', icon: '🌹', title: 'ROSIE ĐANG SOẠN ĐỀ...', titleGradient: 'from-rose-500 to-red-600' };
     if (theme === 'pkl') return { bar: 'bg-[repeating-linear-gradient(45deg,#334155,#334155_10px,#06b6d4_10px,#06b6d4_20px)]', shadow: 'shadow-[0_0_20px_rgba(6,182,212,0.5)]', icon: '🗡️', title: 'ĐANG MÀI GƯƠM...', titleGradient: 'from-slate-400 via-cyan-400 to-slate-400' };
     if (theme === 'showgirl') return { bar: 'bg-[repeating-linear-gradient(45deg,#14b8a6,#14b8a6_10px,#f97316_10px,#f97316_20px)]', shadow: 'shadow-[0_0_30px_rgba(249,115,22,0.6)]', icon: '💃', title: 'LIGHTS, CAMERA, SMILE!', titleGradient: 'from-teal-500 to-orange-500' };
+    if (theme === '1989') return { bar: 'bg-[repeating-linear-gradient(45deg,#38bdf8,#38bdf8_10px,#fff_10px,#fff_20px)]', shadow: 'shadow-[0_0_20px_rgba(56,189,248,0.6)]', icon: '🕊️', title: 'BLANK SPACE FOR KNOWLEDGE...', titleGradient: 'from-sky-400 to-blue-500' };
     return { bar: 'bg-[repeating-linear-gradient(45deg,#3b82f6,#3b82f6_10px,#6366f1_10px,#6366f1_20px)]', shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.5)]', icon: '🦦', title: 'RÁI CÁ ĐANG SOẠN ĐỀ...', titleGradient: 'from-blue-500 to-purple-600' };
   };
   const loadingStyle = getLoadingStyles();
@@ -340,9 +352,9 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
     const messages = [
         "Đang tải dữ liệu...",
         "Phân tích cấu trúc PDF...",
-        theme === 'swift' ? "Are you ready for it? 🐍" : theme === 'blackpink' ? "Blackpink in your area! 🖤💗" : theme === 'aespa' ? "I'm on the Next Level! 🦾" : theme === 'rosie' ? "APT. APT.! 🍷" : theme === 'pkl' ? "Giữa một vạn người... 🗡️" : theme === 'showgirl' ? "Đính đá lên trang phục... 💎" : "Rái cá đang gói quà kiến thức...",
-        theme === 'swift' ? "Shake it off! 🎵" : theme === 'blackpink' ? "Hit you with that ddu-du ddu-du! 🔨" : theme === 'aespa' ? "Synk Dive into Kwangya... 🌌" : theme === 'rosie' ? "On The Ground... 🌹" : theme === 'pkl' ? "Chỉ có kiến thức ở lại... 🦢" : theme === 'showgirl' ? "Kiểm tra ánh đèn sân khấu... ✨" : "Ông già Noel đang duyệt đề...",
-        theme === 'showgirl' ? "Rehearsing for the show... 💃" : "Cấu trúc hoá kiến thức...",
+        theme === 'swift' ? "Are you ready for it? 🐍" : theme === 'blackpink' ? "Blackpink in your area! 🖤💗" : theme === 'aespa' ? "I'm on the Next Level! 🦾" : theme === 'rosie' ? "APT. APT.! 🍷" : theme === 'pkl' ? "Giữa một vạn người... 🗡️" : theme === 'showgirl' ? "Đính đá lên trang phục... 💎" : theme === '1989' ? "Welcome to New York! 🏙️" : "Rái cá đang gói quà kiến thức...",
+        theme === 'swift' ? "Shake it off! 🎵" : theme === 'blackpink' ? "Hit you with that ddu-du ddu-du! 🔨" : theme === 'aespa' ? "Synk Dive into Kwangya... 🌌" : theme === 'rosie' ? "On The Ground... 🌹" : theme === 'pkl' ? "Chỉ có kiến thức ở lại... 🦢" : theme === 'showgirl' ? "Kiểm tra ánh đèn sân khấu... ✨" : theme === '1989' ? "Shake it off... 🕊️" : "Ông già Noel đang duyệt đề...",
+        theme === 'showgirl' ? "Rehearsing for the show... 💃" : theme === '1989' ? "Cause we never go out of style... 🕶️" : "Cấu trúc hoá kiến thức...",
         "Đang soạn câu hỏi...",
         "Kiểm tra độ chính xác đáp án..."
     ];
@@ -577,7 +589,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
             <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm animate-in fade-in p-4">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-8 shadow-2xl border border-slate-200 dark:border-slate-700 animate-in zoom-in-95">
                     <div className="flex flex-col items-center text-center mb-6">
-                        <div className={`w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 ${theme === 'showgirl' ? 'text-orange-500' : 'text-blue-600'}`}>
+                        <div className={`w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 ${theme === 'showgirl' ? 'text-orange-500' : theme === '1989' ? 'text-sky-500' : 'text-blue-600'}`}>
                             <Scale className="w-8 h-8" />
                         </div>
                         <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
@@ -602,6 +614,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                             onClick={handleConfirmCopyright}
                             className={`w-full py-3 rounded-xl text-white font-bold shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2
                                 ${theme === 'showgirl' ? 'bg-gradient-to-r from-teal-500 to-orange-500' : 
+                                  theme === '1989' ? 'bg-gradient-to-r from-sky-400 to-blue-500' :
                                   theme === 'xmas' ? 'bg-gradient-to-r from-red-600 to-green-600' :
                                   'bg-blue-600 hover:bg-blue-700'}
                             `}
@@ -638,8 +651,8 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                         <BookOpen className="w-10 h-10 text-white drop-shadow-lg" />
                     </div>
                     <div>
-                        <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${themeStyle.headerGlow}`}>{theme === 'showgirl' ? "Kịch Bản Sân Khấu (MCQ)" : theme === 'swift' ? "The Setlist (MCQ)" : "Tạo Đề Trắc Nghiệm"}</h1>
-                        <p className={`text-lg ${themeStyle.headerText}`}>{theme === 'showgirl' ? "AI sẽ thiết kế các bước nhảy kiến thức cho màn trình diễn của bạn." : theme === 'swift' ? "Chọn kỷ nguyên kiến thức và trả lời các câu hỏi hit." : "AI sẽ đọc tài liệu và tạo bộ câu hỏi theo yêu cầu của bạn."}</p>
+                        <h1 className={`text-3xl md:text-4xl font-bold mb-2 ${themeStyle.headerGlow}`}>{theme === 'showgirl' ? "Kịch Bản Sân Khấu (MCQ)" : theme === 'swift' ? "The Setlist (MCQ)" : theme === '1989' ? "Blank Space (MCQ)" : "Tạo Đề Trắc Nghiệm"}</h1>
+                        <p className={`text-lg ${themeStyle.headerText}`}>{theme === 'showgirl' ? "AI sẽ thiết kế các bước nhảy kiến thức cho màn trình diễn của bạn." : theme === 'swift' ? "Chọn kỷ nguyên kiến thức và trả lời các câu hỏi hit." : theme === '1989' ? "Điền vào chỗ trống kiến thức còn thiếu trong tâm trí bạn." : "AI sẽ đọc tài liệu và tạo bộ câu hỏi theo yêu cầu của bạn."}</p>
                     </div>
                 </div>
             </div>
@@ -653,7 +666,7 @@ export const MCQMode: React.FC<MCQModeProps> = ({ onBack, theme, user }) => {
                                 <span className="flex items-center gap-2 text-orange-500">
                                     <Sparkles className="w-4 h-4" /> Kịch bản chính (Chủ đề)
                                 </span>
-                            ) : theme === 'swift' ? "Era / Album Chủ đề" : "Chủ đề ôn tập"}
+                            ) : theme === 'swift' ? "Era / Album Chủ đề" : theme === '1989' ? "Track Name / Chủ đề" : "Chủ đề ôn tập"}
                          </label>
                          <input
                             type="text"
