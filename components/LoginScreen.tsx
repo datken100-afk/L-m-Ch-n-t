@@ -143,9 +143,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
     }
 
     // --- 1. VALIDATE AGAINST WHITELIST ---
+    // Helper to normalize Vietnamese strings (handles composed vs decomposed unicode, e.g. Thùy vs Thuỳ)
+    const normalizeStr = (str: string) => str.trim().toLowerCase().normalize("NFC");
+
     const isAllowed = STUDENT_WHITELIST.find(s => 
         s.id === trimmedStudentId && 
-        s.name.toLowerCase() === trimmedFullName.toLowerCase()
+        normalizeStr(s.name) === normalizeStr(trimmedFullName)
     );
 
     if (!isAllowed) {
@@ -230,8 +233,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
           // 2. Verify Name and Student ID locally
           const userData = querySnapshot.docs[0].data();
           
-          // Case-insensitive comparison
-          const isNameMatch = userData.fullName.toLowerCase() === trimmedFullName.toLowerCase();
+          const normalizeStr = (str: string) => str.trim().toLowerCase().normalize("NFC");
+          const isNameMatch = normalizeStr(userData.fullName) === normalizeStr(trimmedFullName);
           const isIdMatch = userData.studentId === trimmedStudentId;
 
           if (!isNameMatch || !isIdMatch) {

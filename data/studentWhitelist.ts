@@ -1,4 +1,7 @@
 
+
+
+
 export interface AllowedStudent {
   id: string;
   name: string;
@@ -208,5 +211,7 @@ export const STUDENT_WHITELIST: AllowedStudent[] = [
   { id: "111250330", name: "NGUYỄN ANH TÀI" },
   { id: "2351010420", name: "CAO NAM PHƯƠNG" },
   { id: "2251010099", name: "VŨ NGÔ DUY" },
-  { id: "123", name: "test" }
+  { id: "123", name: "test" },
+  { id: "2553010128", name: "Lê Thị Thanh Thuỳ" },
+  { id: "2553080073", name: "Dương Thuý Hằng" }
 ];
