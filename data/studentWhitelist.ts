@@ -207,5 +207,6 @@ export const STUDENT_WHITELIST: AllowedStudent[] = [
   { id: "2550110164", name: "BẠCH THÁI ĐĂNG KHÔI" },
   { id: "111250330", name: "NGUYỄN ANH TÀI" },
   { id: "2351010420", name: "CAO NAM PHƯƠNG" },
-  { id: "2251010099", name: "VŨ NGÔ DUY" }
+  { id: "2251010099", name: "VŨ NGÔ DUY" },
+  { id: "123", name: "test" }
 ];
