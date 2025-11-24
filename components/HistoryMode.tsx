@@ -47,6 +47,20 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
                 iconColor: 'text-teal-500',
                 gradient: 'from-teal-600 to-orange-500'
             };
+            case 'folklore': return {
+                accent: 'text-slate-600',
+                bgSoft: 'bg-zinc-100 dark:bg-zinc-900/20',
+                cardBorder: 'border-zinc-200 dark:border-zinc-800',
+                iconColor: 'text-slate-500',
+                gradient: 'from-zinc-500 to-slate-600'
+            };
+            case 'ttpd': return {
+                accent: 'text-stone-600',
+                bgSoft: 'bg-stone-100 dark:bg-stone-900/20',
+                cardBorder: 'border-stone-200 dark:border-stone-700',
+                iconColor: 'text-stone-500',
+                gradient: 'from-stone-500 to-neutral-600'
+            };
             default: return {
                 accent: 'text-blue-600',
                 bgSoft: 'bg-blue-50 dark:bg-blue-900/20',
@@ -82,6 +96,8 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
 
     const handleDeleteExam = async (e: React.MouseEvent, historyId: string) => {
         e.stopPropagation(); // Prevent opening details
+        e.nativeEvent.stopImmediatePropagation();
+        
         if (!user.uid) return;
 
         if (window.confirm("Bạn có chắc chắn muốn xóa lịch sử bài thi này không? Hành động này không thể hoàn tác.")) {
@@ -229,20 +245,22 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
                         const isPass = percentage >= 50;
 
                         return (
-                            <button 
+                            <div 
                                 key={item.id}
                                 onClick={() => setSelectedExam(item)}
-                                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all hover:-translate-y-1 text-left group relative"
+                                className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all hover:-translate-y-1 text-left group relative cursor-pointer"
+                                role="button"
+                                tabIndex={0}
                             >
-                                {/* Delete Button (Shows on Hover) */}
-                                <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div 
+                                {/* Delete Button (Always visible on touch, hover on desktop) */}
+                                <div className="absolute top-4 right-4 z-20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <button 
                                         onClick={(e) => handleDeleteExam(e, item.id)}
-                                        className="p-2 bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors shadow-sm border border-red-100 dark:border-red-800"
+                                        className="p-2 bg-slate-50 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-900/30 text-slate-400 hover:text-red-500 rounded-xl transition-all shadow-sm border border-slate-100 dark:border-slate-700 hover:border-red-200"
                                         title="Xóa lịch sử"
                                     >
                                         <Trash2 className="w-4 h-4" />
-                                    </div>
+                                    </button>
                                 </div>
 
                                 <div className="flex justify-between items-start mb-4 pr-10">
@@ -275,7 +293,7 @@ export const HistoryMode: React.FC<HistoryModeProps> = ({ onBack, theme, user })
                                         Xem chi tiết <ChevronRight className="w-4 h-4" />
                                     </div>
                                 </div>
-                            </button>
+                            </div>
                         );
                     })}
                 </div>

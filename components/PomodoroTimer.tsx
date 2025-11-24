@@ -284,6 +284,17 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ theme }) => {
                 progressRing: 'text-rose-500',
                 inputBorder: 'focus:border-rose-500'
             };
+            case 'folklore': return {
+                iconColor: 'text-slate-600 dark:text-slate-400',
+                triggerBg: 'text-slate-600 dark:text-slate-400 bg-zinc-100 dark:bg-zinc-800 hover:text-slate-800 dark:hover:text-slate-200',
+                glow: 'rgba(113, 113, 122, 0.5)',
+                panelBg: 'bg-zinc-50 dark:bg-zinc-900',
+                border: 'border-zinc-200 dark:border-zinc-800',
+                activeText: 'text-slate-700 dark:text-slate-300 font-serif italic',
+                btnPrimary: 'bg-zinc-600 hover:bg-zinc-700 text-white shadow-zinc-500/30',
+                progressRing: 'text-slate-500',
+                inputBorder: 'focus:border-slate-500'
+            };
             default: return {
                 iconColor: 'text-slate-500 dark:text-slate-400',
                 triggerBg: 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:text-amber-600 dark:hover:text-amber-400',

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ThemeType } from '../App';
 import { Sparkles } from 'lucide-react';
@@ -61,6 +62,34 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({ stage, targetT
                 sub: 'WELCOME TO THE STAGE',
                 accent: 'text-gradient-gold text-glow-gold font-serif tracking-[0.2em]'
             };
+            case '1989': return {
+                bg: 'bg-gradient-to-b from-sky-400 via-blue-300 to-orange-50',
+                icon: '🕊️',
+                title: '1989 (TV)',
+                sub: 'WELCOME TO NEW YORK',
+                accent: 'text-white font-bold tracking-widest drop-shadow-md'
+            };
+            case 'folklore': return {
+                bg: 'bg-gradient-to-b from-zinc-400 to-slate-600',
+                icon: '🌲',
+                title: 'folklore',
+                sub: 'passed down like folk songs',
+                accent: 'text-zinc-100 font-serif italic tracking-wider'
+            };
+            case 'ttpd': return {
+                bg: 'bg-gradient-to-b from-stone-300 to-stone-500',
+                icon: '🖋️',
+                title: 'THE TORTURED POETS DEPARTMENT',
+                sub: 'All\'s fair in love and poetry',
+                accent: 'text-stone-800 font-serif tracking-widest'
+            };
+            case 'evermore': return {
+                bg: 'bg-gradient-to-b from-orange-900 via-amber-900 to-stone-900',
+                icon: '🍂',
+                title: 'evermore',
+                sub: 'long story short, i survived',
+                accent: 'text-orange-200 font-serif italic tracking-widest'
+            };
             default: return {
                 bg: 'bg-gradient-to-br from-amber-500 to-orange-600',
                 icon: '🦦',
@@ -78,7 +107,6 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({ stage, targetT
             className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center transition-transform duration-[800ms] ease-[cubic-bezier(0.76,0,0.24,1)] 
             ${stage === 'entering' ? 'translate-y-0' : ''}
             ${stage === 'exiting' ? '-translate-y-full' : ''}
-            ${stage === 'idle' ? 'translate-y-full' : ''}
             ${config.bg}
             `}
             style={{ transform: stage === 'entering' ? 'translateY(0)' : stage === 'exiting' ? 'translateY(-100%)' : 'translateY(100%)' }}
@@ -88,7 +116,7 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({ stage, targetT
                 
                 {/* Icon Circle */}
                 <div className="relative mb-8">
-                    <div className={`w-32 h-32 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl relative z-10 ${targetTheme === 'showgirl' ? 'border-4 border-yellow-500 shadow-glow-gold' : 'border-4 border-white/20'}`}>
+                    <div className={`w-32 h-32 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl relative z-10 ${targetTheme === 'showgirl' ? 'border-4 border-yellow-500 shadow-glow-gold' : targetTheme === '1989' ? 'border-4 border-sky-200 shadow-[0_0_30px_rgba(56,189,248,0.6)]' : targetTheme === 'folklore' ? 'border-4 border-zinc-300 shadow-[0_0_30px_rgba(212,212,216,0.4)]' : targetTheme === 'ttpd' ? 'border-4 border-stone-600 shadow-2xl bg-stone-200' : targetTheme === 'evermore' ? 'border-4 border-orange-800 shadow-[0_0_30px_rgba(194,65,12,0.4)]' : 'border-4 border-white/20'}`}>
                         <span className="text-7xl animate-[bounce_2s_infinite]">{config.icon}</span>
                     </div>
                     {/* Decor */}
@@ -97,7 +125,7 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({ stage, targetT
                 </div>
 
                 {/* Text */}
-                <h1 className={`text-5xl md:text-7xl font-black text-white tracking-tighter mb-2 text-center drop-shadow-lg ${targetTheme === 'blackpink' ? 'text-pink-500' : targetTheme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : ''}`}>
+                <h1 className={`text-5xl md:text-7xl font-black text-white tracking-tighter mb-2 text-center drop-shadow-lg ${targetTheme === 'blackpink' ? 'text-pink-500' : targetTheme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : targetTheme === 'folklore' ? 'font-serif italic' : targetTheme === 'ttpd' ? 'text-stone-800 font-serif' : targetTheme === 'evermore' ? 'font-serif italic text-orange-100' : ''}`}>
                     {config.title}
                 </h1>
                 <p className={`text-xl md:text-2xl font-medium tracking-widest uppercase opacity-90 ${config.accent}`}>
@@ -106,9 +134,9 @@ export const ThemeTransition: React.FC<ThemeTransitionProps> = ({ stage, targetT
 
                 {/* Loading indicator for vibe */}
                 <div className="mt-12 flex gap-2">
-                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_0ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : ''}`}></div>
-                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_200ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : ''}`}></div>
-                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_400ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : ''}`}></div>
+                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_0ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : targetTheme === '1989' ? 'bg-sky-500' : targetTheme === 'folklore' ? 'bg-zinc-300' : targetTheme === 'ttpd' ? 'bg-stone-700' : targetTheme === 'evermore' ? 'bg-orange-500' : ''}`}></div>
+                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_200ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : targetTheme === '1989' ? 'bg-sky-500' : targetTheme === 'folklore' ? 'bg-zinc-300' : targetTheme === 'ttpd' ? 'bg-stone-700' : targetTheme === 'evermore' ? 'bg-orange-500' : ''}`}></div>
+                    <div className={`w-3 h-3 bg-white rounded-full animate-[bounce_1s_infinite_400ms] ${targetTheme === 'showgirl' ? 'bg-yellow-400' : targetTheme === '1989' ? 'bg-sky-500' : targetTheme === 'folklore' ? 'bg-zinc-300' : targetTheme === 'ttpd' ? 'bg-stone-700' : targetTheme === 'evermore' ? 'bg-orange-500' : ''}`}></div>
                 </div>
             </div>
         </div>

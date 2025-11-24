@@ -150,6 +150,22 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                 btnSecondary: 'bg-teal-500 hover:bg-teal-600',
                 cardBorder: 'border-orange-200 dark:border-orange-800',
             };
+            case 'folklore': return {
+                gradient: 'from-zinc-500 to-slate-600',
+                accent: 'text-slate-600',
+                bgSoft: 'bg-zinc-100 dark:bg-zinc-800',
+                btnPrimary: 'bg-zinc-600 hover:bg-zinc-700',
+                btnSecondary: 'bg-slate-500 hover:bg-slate-600',
+                cardBorder: 'border-zinc-200 dark:border-zinc-700',
+            };
+            case 'ttpd': return {
+                gradient: 'from-stone-500 to-neutral-600',
+                accent: 'text-stone-600',
+                bgSoft: 'bg-stone-100 dark:bg-stone-900/40',
+                btnPrimary: 'bg-stone-600 hover:bg-stone-700',
+                btnSecondary: 'bg-neutral-500 hover:bg-neutral-600',
+                cardBorder: 'border-stone-300 dark:border-stone-700',
+            };
             default: return {
                 gradient: 'from-amber-400 to-orange-600',
                 accent: 'text-amber-600',
@@ -433,8 +449,8 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                             <Layers className="w-10 h-10 text-white drop-shadow-lg" />
                         </div>
                         <div>
-                            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-glow-white">{theme === 'showgirl' ? "Script Cards" : "Flashcards"}</h1>
-                            <p className="text-lg text-white/90">{theme === 'showgirl' ? "Kịch bản bỏ túi cho màn trình diễn." : "Tự tạo bộ thẻ ghi nhớ và ôn tập mọi lúc."}</p>
+                            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-glow-white">{theme === 'showgirl' ? "Script Cards" : theme === 'ttpd' ? "The Prophecy" : "Flashcards"}</h1>
+                            <p className="text-lg text-white/90">{theme === 'showgirl' ? "Kịch bản bỏ túi cho màn trình diễn." : theme === 'ttpd' ? "Don't want money, just someone who wants my company." : "Tự tạo bộ thẻ ghi nhớ và ôn tập mọi lúc."}</p>
                         </div>
                     </div>
                     <button 
@@ -506,7 +522,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                     title="Học thông minh (Spaced Repetition)"
                                 >
                                     <BrainCircuit className="w-3 h-3" /> 
-                                    {theme === 'showgirl' ? "Diễn tập (Smart)" : "Học (SR)"}
+                                    {theme === 'showgirl' ? "Diễn tập (Smart)" : theme === 'ttpd' ? "Evidence (SR)" : "Học (SR)"}
                                     {dueCount > 0 && <span className="bg-white/20 px-1.5 rounded-full ml-1">{dueCount}</span>}
                                 </button>
                             </div>
@@ -733,7 +749,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                 </div>
                             </div>
 
-                            <span className="absolute top-6 left-6 text-xs font-bold ${styles.accent} uppercase tracking-widest">Đáp án</span>
+                            <span className={`absolute top-6 left-6 text-xs font-bold ${styles.accent} uppercase tracking-widest`}>Đáp án</span>
                             <div className={`text-xl md:text-3xl font-medium ${styles.accent} leading-relaxed`}>
                                 {card.back}
                             </div>

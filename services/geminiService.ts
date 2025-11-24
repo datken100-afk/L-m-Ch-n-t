@@ -28,10 +28,11 @@ interface ContentFile {
     isText: boolean;
 }
 
-// OPTIMIZATION: Strict Token Limits.
-const LIMIT_THEORY_CHARS = 60000; 
-const LIMIT_CLINICAL_CHARS = 30000; 
-const LIMIT_SAMPLE_CHARS = 20000;
+// OPTIMIZATION: Massive Token Limits for Gemini 2.5 Flash (1M context)
+// We can afford to send much more context to ensure accuracy.
+const LIMIT_THEORY_CHARS = 200000; 
+const LIMIT_CLINICAL_CHARS = 100000; 
+const LIMIT_SAMPLE_CHARS = 50000;
 
 // --- RETRY LOGIC HELPER ---
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -87,7 +88,8 @@ async function retryGeminiCall<T>(
   throw new Error(`Lỗi kết nối AI: ${cleanMsg}`);
 }
 
-// --- INTELLIGENT CONTEXT FILTERING ---
+// --- INTELLIGENT CONTEXT FILTERING (RELAXED) ---
+// With larger context window, we can be less aggressive about filtering.
 function filterRelevantContent(content: string, topic: string, limit: number): string {
     if (!topic || topic.trim().length < 2) {
         return content.substring(0, limit); 
@@ -96,36 +98,42 @@ function filterRelevantContent(content: string, topic: string, limit: number): s
     const keywords = topic.toLowerCase().split(/\s+/).filter(w => w.length > 2); 
     if (keywords.length === 0) return content.substring(0, limit);
 
+    // Split by paragraphs to keep context together
     const chunks = content.split(/\n\s*\n/); 
     
     const scoredChunks = chunks.map(chunk => {
         const lowerChunk = chunk.toLowerCase();
         let score = 0;
+        // Base score for keyword match
         keywords.forEach(kw => {
-            if (lowerChunk.includes(kw)) score += 3; 
+            if (lowerChunk.includes(kw)) score += 5; 
         });
-        if (score > 0 && (lowerChunk.includes("khái niệm") || lowerChunk.includes("định nghĩa") || lowerChunk.includes("chức năng"))) {
-            score += 1;
+        // Boost for definition/intro
+        if (score > 0 && (lowerChunk.includes("khái niệm") || lowerChunk.includes("định nghĩa") || lowerChunk.includes("chức năng") || lowerChunk.includes("cấu tạo"))) {
+            score += 2;
+        }
+        // Boost for exact phrase match (high value)
+        if (lowerChunk.includes(topic.toLowerCase())) {
+            score += 10;
         }
         return { text: chunk, score };
     });
 
+    // Sort by score descending
     scoredChunks.sort((a, b) => b.score - a.score);
 
     let result = "";
     let currentLen = 0;
 
     for (const chunk of scoredChunks) {
-        if (chunk.score === 0 && currentLen > limit / 2) continue; 
+        // Include chunk if it has a score OR if we have plenty of space (context filler)
+        // But prioritize high scores first.
+        if (chunk.score === 0 && currentLen > limit * 0.8) continue; 
+        
         if (currentLen + chunk.text.length > limit) break;
         
         result += chunk.text + "\n\n";
         currentLen += chunk.text.length;
-    }
-
-    if (currentLen < Math.min(limit, 5000)) {
-        const remaining = limit - currentLen;
-        result += "\n--- Additional Context ---\n" + content.substring(0, remaining);
     }
 
     return result;
@@ -139,31 +147,39 @@ export const generateMCQQuestions = async (
 ): Promise<GeneratedMCQResponse> => {
   const ai = getAI();
 
+  // REFINED PROMPT FOR STRICTER TOPIC ADHERENCE AND DIFFICULTY ANALYSIS
   let systemInstruction = `
     Bạn là Giáo sư GIẢI PHẪU ĐẠI THỂ (Gross Anatomy) hàng đầu tại Đại học Y Dược.
-    Nhiệm vụ: Tạo ${count} câu trắc nghiệm giải phẫu về chủ đề "${topic}".
-    Độ khó: ${difficulties.join(', ')}.
-
-    QUY TẮC TỐI THƯỢNG (STRICT RULES):
-    1. **TRỌNG TÂM TUYỆT ĐỐI LÀ GIẢI PHẪU ĐẠI THỂ (GROSS ANATOMY)**:
-       - Chỉ tập trung vào cấu trúc nhìn thấy bằng mắt thường trên phẫu tích: Cơ, Xương, Khớp, Mạch máu, Thần kinh, Tạng, Liên quan giải phẫu.
-       - Các câu hỏi phải xoay quanh: Nguyên ủy, Bám tận, Đường đi, Chi phối, Cấp máu, Vị trí tương đối, Hình thể ngoài, Hình thể trong (cấu trúc lớn).
+    Nhiệm vụ: Phân tích KỸ LƯỠNG tài liệu được cung cấp (nếu có) để tạo CHÍNH XÁC ${count} câu trắc nghiệm.
+    Chủ đề Trọng Tâm: "${topic}".
     
-    2. **TUYỆT ĐỐI LOẠI BỎ MÔ HỌC/VI THỂ (NO HISTOLOGY)**:
-       - **CẤM** hỏi về cấu trúc tế bào, mô học, kính hiển vi.
-       - **CẤM** sử dụng các từ khóa vi thể: "biểu mô", "lát tầng", "trụ đơn", "tiểu cầu thận", "tế bào gan", "ống lượn", "quai Henle", "nang bạch huyết", "tiểu đảo Langerhans", "vi nhung mao".
-       - Nếu tài liệu đầu vào có chứa thông tin Mô học/Vi thể, hãy **LỜ ĐI** và chỉ trích xuất thông tin Đại thể.
-       - Ví dụ sai (Vi thể): "Biểu mô lót bàng quang là gì?" -> **LOẠI BỎ**.
-       - Ví dụ đúng (Đại thể): "Động mạch cấp máu cho bàng quang xuất phát từ đâu?" -> **CHẤP NHẬN**.
+    YÊU CẦU VỀ ĐỘ KHÓ (BẮT BUỘC TUÂN THỦ):
+    Bạn chỉ được tạo câu hỏi thuộc các mức độ sau: ${difficulties.join(', ')}. Hãy chia tỷ lệ hợp lý.
+    
+    CHIẾN LƯỢC PHÂN TÍCH FILE & TẠO CÂU HỎI:
+    
+    1. **${Difficulty.REMEMBER} (Ghi nhớ)**: 
+       - Quét file LÝ THUYẾT: Tìm các định nghĩa, tên cấu trúc, nguyên ủy, bám tận, chi phối thần kinh.
+       - Hỏi trực diện: "Cơ nào...", "Thần kinh nào...", "Cấu trúc nào nằm ở...".
+       
+    2. **${Difficulty.UNDERSTAND} (Hiểu)**: 
+       - Quét file LÝ THUYẾT: Tìm các đoạn văn mô tả liên quan, chức năng, sự tương quan giữa các cơ quan.
+       - Hỏi về cơ chế: "Tại sao...", "Chức năng chính của...", "Hệ quả khi...".
+       
+    3. **${Difficulty.APPLY} (Vận dụng thấp)**: 
+       - Kết hợp thông tin LÝ THUYẾT: Đặt tình huống giả định đơn giản về vị trí tương đối.
+       - Ví dụ: "Trong phẫu thuật vùng X, cấu trúc nào dễ bị tổn thương nhất?".
+       
+    4. **${Difficulty.CLINICAL} (Lâm sàng)**: 
+       - **QUAN TRỌNG**: Ưu tiên tối đa việc trích xuất dữ liệu từ file "LÂM SÀNG" (Case Study, Bệnh án) nếu người dùng cung cấp.
+       - Nếu có file Lâm sàng: Hãy tạo câu hỏi dựa trên đúng các case đó.
+       - Nếu KHÔNG có file Lâm sàng: Hãy dùng kiến thức y khoa chuẩn để tạo tình huống bệnh lý thực tế liên quan đến "${topic}" (Gãy xương, liệt thần kinh, tắc mạch...).
+       - Cấu trúc: [Mô tả triệu chứng/Tiền sử] -> [Hỏi về tổn thương giải phẫu].
 
-    3. **BÁM SÁT TÀI LIỆU**:
-       - Chỉ sử dụng thông tin từ văn bản được cung cấp dưới đây.
-       - Nếu tài liệu không có thông tin về "${topic}", hãy trả lời trung thực hoặc tạo câu hỏi từ phần có liên quan nhất trong tài liệu đó (nhưng vẫn phải là ĐẠI THỂ).
-
-    4. **ĐỊNH DẠNG JSON**:
-       - Trả về định dạng JSON thuần túy.
-       - 4 lựa chọn, 1 đáp án đúng.
-       - Giải thích ngắn gọn, súc tích, tập trung vào tư duy giải phẫu đại thể.
+    QUY TẮC CHUNG:
+    - **BÁM SÁT FILE**: Nếu tài liệu có thông tin về "${topic}", phải ưu tiên dùng nó làm dữ liệu nguồn (grounding).
+    - **GROSS ANATOMY ONLY**: Chỉ hỏi giải phẫu đại thể (Cơ, Xương, Mạch, Thần kinh, Tạng). Không hỏi mô học/tế bào.
+    - **OUTPUT**: JSON thuần túy.
   `;
 
   const schema: Schema = {
@@ -192,7 +208,7 @@ export const generateMCQQuestions = async (
   const addContentParts = (fileItems: ContentFile[] | undefined, sectionTitle: string, charLimit: number) => {
     if (!fileItems || fileItems.length === 0) return;
 
-    parts.push({ text: `\n--- TÀI LIỆU ${sectionTitle} (Đã lọc theo chủ đề "${topic}") ---\n` });
+    parts.push({ text: `\n--- TÀI LIỆU THAM KHẢO: ${sectionTitle} ---\n` });
     
     let currentChars = 0;
 
@@ -201,34 +217,36 @@ export const generateMCQQuestions = async (
 
         if (item.content && item.isText) {
              const remaining = charLimit - currentChars;
+             // Filter content to prioritize the topic, but keep large context
              const relevantContent = filterRelevantContent(item.content, topic, remaining);
              
              parts.push({ text: relevantContent });
              currentChars += relevantContent.length;
         } else if (item.content && !item.isText) {
-             parts.push({ text: item.content.substring(0, 1000) });
+             parts.push({ text: item.content.substring(0, 2000) });
         }
     }
   };
 
   addContentParts(files.theory, "LÝ THUYẾT", LIMIT_THEORY_CHARS);
-  addContentParts(files.clinical, "LÂM SÀNG", LIMIT_CLINICAL_CHARS);
+  addContentParts(files.clinical, "LÂM SÀNG (Dùng cho câu hỏi Lâm sàng)", LIMIT_CLINICAL_CHARS);
   addContentParts(files.sample, "ĐỀ MẪU", LIMIT_SAMPLE_CHARS);
 
-  parts.push({ text: `Hãy tạo đúng ${count} câu hỏi JSON về GIẢI PHẪU ĐẠI THỂ (Tuyệt đối KHÔNG MÔ HỌC).` });
+  // Final Reminder in prompt
+  parts.push({ text: `YÊU CẦU: Tạo ${count} câu hỏi trắc nghiệm về chủ đề "${topic}". Hãy phân tích kỹ các file trên (đặc biệt là file Lâm sàng cho câu hỏi Lâm sàng) để tạo câu hỏi sát thực tế.` });
 
   return retryGeminiCall(async () => {
       const response = await ai.models.generateContent({
           model: MODEL_MCQ,
-          contents: {
+          contents: [{
               role: 'user',
               parts: parts
-          },
+          }],
           config: {
               systemInstruction: systemInstruction,
               responseMimeType: "application/json",
               responseSchema: schema,
-              temperature: 0.4 // Lower temperature even more for stricter adherence to Gross Anatomy
+              temperature: 0.4
           }
       });
 
@@ -250,34 +268,44 @@ export const generateStationQuestionFromImage = async (
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
     const cleanAnswerBase64 = answerImageBase64 ? answerImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "") : null;
 
-    // EXTREMELY RELAXED SYSTEM INSTRUCTION
+    // STRICTER SYSTEM INSTRUCTION
     const systemInstruction = `
-        Bạn là Trợ giảng Giải phẫu học. Nhiệm vụ là tạo câu hỏi định danh cấu trúc (Spot Test) từ hình ảnh.
-        
-        QUAN TRỌNG NHẤT: CỐ GẮNG TẠO CÂU HỎI, ĐỪNG BỎ QUA.
-        
-        1. **HÌNH ẢNH**: Bạn nhận được HÌNH CÂU HỎI và (tùy chọn) HÌNH ĐÁP ÁN (trang sau).
-        
-        2. **ĐIỀU KIỆN CHẤP NHẬN (Rất lỏng)**:
-           - Nếu hình ảnh có BẤT KỲ cấu trúc giải phẫu người nào (xương, cơ, tạng...), hãy đặt câu hỏi.
-           - KHÔNG cần thiết phải có số/mũi tên. Nếu không có, hãy tự chọn một cấu trúc nổi bật và hỏi vị trí của nó.
-           - CHỈ từ chối (isValid: false) nếu hình là: Trang bìa, Trang trắng hoàn toàn, Toàn chữ văn bản không có hình.
-           - Về chủ đề: Ưu tiên "${detailedTopic}", NHƯNG nếu hình thuộc chủ đề giải phẫu khác cũng VẪN CHẤP NHẬN để sinh viên có bài ôn tập.
+        Bạn là Hội đồng Khảo thí Giải phẫu học cực kỳ nghiêm ngặt.
+        Nhiệm vụ: Kiểm duyệt hình ảnh và tạo 1 câu hỏi định danh cấu trúc (Spot Test) NẾU VÀ CHỈ NẾU hình ảnh đạt chuẩn.
 
-        3. **CHIẾN LƯỢC TẠO CÂU HỎI**:
-           - Tìm số/chữ trên hình và tra cứu ở hình đáp án.
-           - NẾU KHÔNG TÌM THẤY ĐÁP ÁN TEXT: Hãy dùng kiến thức y khoa của bạn để tự định danh cấu trúc đó.
-           - Ví dụ câu hỏi khi không có số: "Cấu trúc lớn nhất nằm ở trung tâm hình là gì?" hoặc "Đây là mặt nào của xương ...?".
+        DỮ LIỆU:
+        - HÌNH 1: Đề bài (Thường là hình vẽ giải phẫu).
+        - HÌNH 2: Đáp án/Chú thích (Nếu có).
+        - CHỦ ĐỀ YÊU CẦU: "${detailedTopic}".
+
+        QUY TRÌNH KIỂM DUYỆT (STEP-BY-STEP):
+        
+        1. **BƯỚC 1: KIỂM TRA LOẠI HÌNH ẢNH (Quan trọng nhất)**
+           - Nhìn vào HÌNH 1.
+           - Nếu HÌNH 1 chứa 80% là văn bản, danh sách (list), bảng biểu (table), hoặc mục lục -> **TRẢ VỀ isValid: false NGAY LẬP TỨC**.
+           - Nếu HÌNH 1 là trang trắng hoặc chỉ có tiêu đề -> **TRẢ VỀ isValid: false**.
+           - HÌNH 1 BẮT BUỘC phải là HÌNH VẼ MINH HỌA GIẢI PHẪU (Atlas, mô hình, xác, xương, cơ...).
+
+        2. **BƯỚC 2: KIỂM TRA CHỦ ĐỀ**
+           - Hình ảnh có liên quan đến "${detailedTopic}" không?
+           - Ví dụ: Yêu cầu "Tim mạch" nhưng hình là "Xương chi dưới" -> **TRẢ VỀ isValid: false**.
+           - Chỉ chấp nhận nếu đúng hoặc liên quan mật thiết đến chủ đề.
+
+        3. **BƯỚC 3: TẠO CÂU HỎI (Chỉ khi Bước 1 & 2 OK)**
+           - Tìm một chi tiết có số hoặc mũi tên trên HÌNH 1.
+           - Đối chiếu HÌNH 2 để tìm tên chính xác.
+           - Nếu không có số: Hãy tự chọn một cấu trúc NỔI BẬT NHẤT và hỏi.
+           - Output câu hỏi JSON.
 
         OUTPUT JSON:
         {
-            "isValid": boolean, // True cho 99% hình giải phẫu. False chỉ cho hình rác.
+            "isValid": boolean, // False nếu là trang chữ/mục lục/sai chủ đề.
             "questions": [
                 {
-                    "questionText": "Câu hỏi ngắn gọn",
-                    "correctAnswer": "Tên cấu trúc chính xác",
-                    "acceptedKeywords": ["tên khác", "tên latin"],
-                    "explanation": "Giải thích ngắn gọn."
+                    "questionText": "Cấu trúc số X là gì?",
+                    "correctAnswer": "Tên chuẩn (Latin/Việt)",
+                    "acceptedKeywords": ["tên khác"],
+                    "explanation": "Mô tả ngắn gọn vị trí/chức năng."
                 }
             ]
         }
@@ -315,23 +343,23 @@ export const generateStationQuestionFromImage = async (
     // 2. Add Answer Image if available
     if (cleanAnswerBase64) {
         parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanAnswerBase64 } });
-        parts.push({ text: `HÌNH 1 là CÂU HỎI. HÌNH 2 là ĐÁP ÁN. Hãy tìm một chi tiết để hỏi. Nếu không có text đáp án, HÃY DÙNG KIẾN THỨC CỦA BẠN. Đừng trả về isValid=false trừ khi hình không phải giải phẫu.` });
+        parts.push({ text: `HÌNH 1 là CÂU HỎI. HÌNH 2 là ĐÁP ÁN. Kiểm tra kỹ xem HÌNH 1 có phải là hình vẽ giải phẫu không. Nếu toàn chữ -> isValid: false.` });
     } else {
-        parts.push({ text: `Hãy phân tích hình ảnh giải phẫu này và tạo 1 câu hỏi định danh cấu trúc. Dùng kiến thức của bạn nếu cần.` });
+        parts.push({ text: `Phân tích hình ảnh này. Nếu là văn bản/text -> isValid: false.` });
     }
 
     return retryGeminiCall(async () => {
         const response = await ai.models.generateContent({
             model: MODEL_VISION,
-            contents: {
+            contents: [{
                 role: 'user',
                 parts: parts
-            },
+            }],
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.5 // More creative to allow guessing/inferring
+                temperature: 0.2 // Low temperature to be strict about isValid rules
             }
         });
         
@@ -350,32 +378,38 @@ export const generateStationQuestionFromImage = async (
 export const chatWithOtter = async (history: any[], newMessage: string, image?: string): Promise<string> => {
     const ai = getAI();
 
-    let parts: any[] = [];
-    if (image) {
-        const cleanBase64 = image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
-        parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } });
-    }
-    parts.push({ text: newMessage });
-
-    const recentHistory = history.slice(-8).map(h => ({
+    // Prepare conversation history for generateContent (Stateless usage)
+    // history contains objects like { role: 'user'|'model', text: string }
+    const contents: any[] = history.map(h => ({
         role: h.role === 'model' ? 'model' : 'user',
         parts: [{ text: h.text }] 
     }));
 
+    // Prepare the new message parts
+    const currentParts: any[] = [];
+    if (image) {
+        const cleanBase64 = image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
+        currentParts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } });
+    }
+    currentParts.push({ text: newMessage });
+
+    // Add new message to the end of contents
+    contents.push({
+        role: 'user',
+        parts: currentParts
+    });
+
     return retryGeminiCall(async () => {
-        const chat = ai.chats.create({
+        // Use generateContent directly instead of chats.create/sendMessage to avoid ContentUnion/State errors
+        const response = await ai.models.generateContent({
             model: MODEL_CHAT,
-            history: recentHistory,
+            contents: contents,
             config: {
-                systemInstruction: "Bạn là Rái Cá Anatomy, trợ lý học tập vui vẻ, chuyên gia giải phẫu học.",
+                systemInstruction: "Bạn là Rái Cá Anatomy, trợ lý học tập vui vẻ, chuyên gia giải phẫu học. Hãy trả lời ngắn gọn, súc tích và dễ hiểu. Sử dụng định dạng Markdown (in đậm, gạch đầu dòng) để trình bày rõ ràng.",
             }
         });
 
-        const result = await chat.sendMessage({
-            parts: parts
-        });
-
-        return result.text || "Rái cá đang bận bắt cá, thử lại sau nhé! 🦦";
+        return response.text || "Rái cá đang bận bắt cá, thử lại sau nhé! 🦦";
     });
 };
 
@@ -426,10 +460,10 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
     return retryGeminiCall(async () => {
         const response = await ai.models.generateContent({
             model: MODEL_MCQ, 
-            contents: {
+            contents: [{
                 role: 'user',
                 parts: [{ text: `Phân tích kết quả bài thi chủ đề "${topic}". Số liệu chi tiết: ${JSON.stringify(stats)}.` }]
-            },
+            }],
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",

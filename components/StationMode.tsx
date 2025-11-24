@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateStationQuestionFromImage, analyzeResultWithOtter } from '../services/geminiService';
 import { StationItem, MentorResponse } from '../types';
-import { Play, Timer, ArrowRight, CheckCircle, Eye, Activity, FileText, Crosshair, Database, Sparkles, FileUp, Loader2, ZoomIn, ZoomOut, RotateCcw, Check, X, ThumbsUp, ShieldAlert, AlertCircle, Lightbulb, List, Search, Book, Move, Maximize2, RefreshCw, BrainCircuit, Stethoscope, Milestone, Footprints, Trophy } from 'lucide-react';
+import { Play, Timer, ArrowRight, CheckCircle, Eye, Activity, FileText, Crosshair, Database, Sparkles, FileUp, Loader2, ZoomIn, ZoomOut, RotateCcw, Check, X, ThumbsUp, ShieldAlert, AlertCircle, Lightbulb, List, Search, Book, Move, Maximize2, RefreshCw, BrainCircuit, Stethoscope, Milestone, Footprints, Trophy, Trees } from 'lucide-react';
 import { ThemeType } from '../App';
 
 // Declare pdfjsLib globally
@@ -11,6 +11,7 @@ declare const pdfjsLib: any;
 interface StationModeProps {
   onBack: () => void;
   theme: ThemeType;
+  onExamComplete?: () => void;
 }
 
 enum StationStep {
@@ -28,6 +29,17 @@ interface StationResult {
     explanation: string;
     acceptedKeywords: string[];
     isCorrect: boolean;
+}
+
+// New interface for prepared questions
+interface PreparedStation {
+    image: string;
+    questionData: {
+        questionText: string;
+        correctAnswer: string;
+        acceptedKeywords: string[];
+        explanation: string;
+    }
 }
 
 interface SectionMap {
@@ -50,7 +62,7 @@ const GRAYS_SECTIONS: SectionMap[] = [
     { id: 'head', name: '8. Head & Neck (Đầu Mặt Cổ)', range: [539, 730], keywords: ['head', 'neck', 'đầu', 'mặt', 'cổ', 'sọ', 'thần kinh sọ', 'cranial', 'skull', 'face'] },
 ];
 
-export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
+export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamComplete }) => {
     const [step, setStep] = useState<StationStep>(StationStep.SETUP);
     const [topic, setTopic] = useState('');
     const [file, setFile] = useState<File | null>(null);
@@ -63,19 +75,15 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
     const [timeLimit, setTimeLimit] = useState<number>(45);
     
     // Data State
-    const [images, setImages] = useState<string[]>([]);
-    const [answerImages, setAnswerImages] = useState<string[]>([]); // Parallel array for answer pages
+    const [preparedStations, setPreparedStations] = useState<PreparedStation[]>([]);
     const [stationResults, setStationResults] = useState<StationResult[]>([]);
-    const [validStationsCount, setValidStationsCount] = useState(0); // Track actually generated questions
     
     // Loading State
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingText, setLoadingText] = useState('');
     
     // Running State
-    const [currentIdx, setCurrentIdx] = useState(0); // Index in the 'images' array
-    const [questionData, setQuestionData] = useState<any>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [currentStationIdx, setCurrentStationIdx] = useState(0);
     const [timeLeft, setTimeLeft] = useState(0);
     const [currentUserAnswer, setCurrentUserAnswer] = useState('');
     
@@ -121,6 +129,22 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                 rangeColor: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30',
                 inputFocus: 'focus:ring-red-500'
             };
+            case 'folklore': return {
+                primary: 'bg-gradient-to-r from-zinc-500 to-slate-600',
+                accent: 'text-slate-600',
+                bg: 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700',
+                icon: 'text-slate-500',
+                rangeColor: 'text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800',
+                inputFocus: 'focus:ring-slate-500'
+            };
+            case 'ttpd': return {
+                primary: 'bg-gradient-to-r from-stone-500 to-neutral-600',
+                accent: 'text-stone-600',
+                bg: 'bg-[#f5f5f4] dark:bg-[#1c1917] border-stone-300 dark:border-stone-700',
+                icon: 'text-stone-500',
+                rangeColor: 'text-stone-600 dark:text-stone-400 bg-stone-100 dark:bg-stone-800',
+                inputFocus: 'focus:ring-stone-500'
+            };
             default: return {
                 primary: 'bg-blue-600 hover:bg-blue-700',
                 accent: 'text-blue-600',
@@ -135,34 +159,94 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
 
     // ... Loading Logic
     const getLoadingStyles = () => {
-        if (theme === 'xmas') return { bar: 'bg-[repeating-linear-gradient(45deg,#dc2626,#dc2626_10px,#ffffff_10px,#ffffff_20px)]', shadow: 'shadow-[0_0_20px_rgba(220,38,38,0.5)]', icon: '🎅', title: 'ÔNG GIÀ NOEL ĐANG CẮT LÁT...', titleGradient: 'from-red-500 to-emerald-600' };
-        if (theme === 'swift') return { bar: 'bg-[repeating-linear-gradient(45deg,#a855f7,#a855f7_10px,#ec4899_10px,#ec4899_20px)]', shadow: 'shadow-[0_0_20px_rgba(168,85,247,0.5)]', icon: '🐍', title: 'RẮN CHÚA ĐANG SOI KÍNH...', titleGradient: 'from-purple-500 to-pink-600' };
-        if (theme === 'showgirl') return { bar: 'bg-[repeating-linear-gradient(45deg,#14b8a6,#14b8a6_10px,#f97316_10px,#f97316_20px)]', shadow: 'shadow-[0_0_30px_rgba(249,115,22,0.6)]', icon: '💃', title: 'PREPARING THE STAGE...', titleGradient: 'from-teal-500 to-orange-500' };
-        return { bar: 'bg-[repeating-linear-gradient(45deg,#3b82f6,#3b82f6_10px,#6366f1_10px,#6366f1_20px)]', shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.5)]', icon: '🦦', title: 'RÁI CÁ ĐANG CHUẨN BỊ TRẠM...', titleGradient: 'from-blue-500 to-purple-600' };
+        switch (theme) {
+            case 'xmas': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#dc2626,#dc2626_10px,#ffffff_10px,#ffffff_20px)]',
+                shadow: 'shadow-[0_0_20px_rgba(220,38,38,0.5)]',
+                icon: '🎅',
+                title: 'ÔNG GIÀ NOEL ĐANG CẮT LÁT...',
+                titleGradient: 'from-red-500 to-green-600'
+            };
+            case 'swift': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#8b5cf6,#8b5cf6_10px,#ec4899_10px,#ec4899_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(168,85,247,0.6)]',
+                icon: '🐍',
+                title: 'RẮN CHÚA ĐANG SOI KÍNH...',
+                titleGradient: 'from-purple-500 via-pink-500 to-indigo-500'
+            };
+            case 'blackpink': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#ec4899,#ec4899_10px,#000000_10px,#000000_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(236,72,153,0.6)]',
+                icon: '👑',
+                title: 'BLACKPINK IN YOUR AREA...',
+                titleGradient: 'from-pink-500 to-slate-800'
+            };
+            case 'aespa': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#6366f1,#6366f1_10px,#a855f7_10px,#a855f7_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(168,85,247,0.8)]',
+                icon: '👽',
+                title: 'SYNK DIVE INTO KWANGYA...',
+                titleGradient: 'from-indigo-400 via-purple-400 to-blue-400'
+            };
+            case 'rosie': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#e11d48,#e11d48_10px,#fb7185_10px,#fb7185_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(225,29,72,0.6)]',
+                icon: '🌹',
+                title: 'APT. APT. LOADING...',
+                titleGradient: 'from-rose-500 to-red-600'
+            };
+            case 'pkl': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#06b6d4,#06b6d4_10px,#334155_10px,#334155_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(6,182,212,0.6)]',
+                icon: '🗡️',
+                title: 'G1VN ĐANG KHỞI TẠO...',
+                titleGradient: 'from-cyan-500 to-slate-700'
+            };
+            case 'showgirl': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#f59e0b,#f59e0b_10px,#14b8a6_10px,#14b8a6_20px)]',
+                shadow: 'shadow-[0_0_40px_rgba(245,158,11,0.8)]',
+                icon: '💃',
+                title: 'ĐANG BẬT ĐÈN SÂN KHẤU...',
+                titleGradient: 'from-orange-400 via-yellow-400 to-teal-400'
+            };
+            case '1989': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#38bdf8,#38bdf8_10px,#fcd34d_10px,#fcd34d_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(56,189,248,0.6)]',
+                icon: '🕊️',
+                title: 'ĐANG BAY ĐẾN NEW YORK...',
+                titleGradient: 'from-sky-400 to-blue-500'
+            };
+            case 'folklore': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#71717a,#71717a_10px,#d4d4d8_10px,#d4d4d8_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(161,161,170,0.5)]',
+                icon: '🌲',
+                title: 'LOST IN THE WOODS...',
+                titleGradient: 'from-zinc-500 to-slate-400'
+            };
+            case 'ttpd': return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#a8a29e,#a8a29e_10px,#d6d3d1_10px,#d6d3d1_20px)]',
+                shadow: 'shadow-[0_0_30px_rgba(168,162,158,0.5)]',
+                icon: '🖋️',
+                title: 'THE CHAIRMAN IS WATCHING...',
+                titleGradient: 'from-stone-500 to-neutral-600'
+            };
+            default: return {
+                bar: 'bg-[repeating-linear-gradient(45deg,#3b82f6,#3b82f6_10px,#6366f1_10px,#6366f1_20px)]',
+                shadow: 'shadow-[0_0_20px_rgba(59,130,246,0.5)]',
+                icon: '🦦',
+                title: 'RÁI CÁ ĐANG CHUẨN BỊ TRẠM...',
+                titleGradient: 'from-blue-500 to-purple-600'
+            };
+        }
     };
     const loadingStyle = getLoadingStyles();
-
-    useEffect(() => {
-        if (step !== StationStep.GENERATING) return;
-        const messages = ["Đang cắt lát PDF...", "Tách hình ảnh và đáp án...", "Soi kính hiển vi điện tử...", "Lọc hình ảnh toàn chữ...", "Sắp xếp các trạm thi..."];
-        let msgIndex = 0;
-        setLoadingText(messages[0]);
-        const textInterval = setInterval(() => {
-            msgIndex = (msgIndex + 1) % messages.length;
-            setLoadingText(messages[msgIndex]);
-        }, 2000);
-        const progressInterval = setInterval(() => {
-            setLoadingProgress(prev => prev >= 95 ? prev : prev + (prev > 80 ? 0.5 : 2));
-        }, 200);
-        return () => { clearInterval(textInterval); clearInterval(progressInterval); };
-    }, [step]);
 
     // FIXED TIMER LOGIC with improved dependency tracking
     useEffect(() => {
         let interval: any;
         
-        // Only run timer if we are in RUNNING mode, NOT generating, and HAVE a valid question
-        if (step === StationStep.RUNNING && !isGenerating && questionData) {
+        // Only run timer if we are in RUNNING mode
+        if (step === StationStep.RUNNING && preparedStations.length > 0) {
             interval = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 0) return 0;
@@ -174,32 +258,35 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
         return () => {
             if (interval) clearInterval(interval);
         };
-    }, [step, isGenerating, questionData]); // Removed timeLeft to prevent constant re-creation
+    }, [step, preparedStations]);
 
     // Handle Time limit Expiry
     useEffect(() => {
-        if (timeLeft === 0 && step === StationStep.RUNNING && !isGenerating && questionData) {
+        if (timeLeft === 0 && step === StationStep.RUNNING && preparedStations.length > 0) {
             handleMoveToNextStation();
         }
-    }, [timeLeft, step, isGenerating, questionData]);
+    }, [timeLeft, step, preparedStations]);
 
     // Setup Focus on Input
     useEffect(() => {
-        if (!isGenerating && questionData && answerInputRef.current) {
+        if (step === StationStep.RUNNING && answerInputRef.current) {
             answerInputRef.current.focus();
         }
-    }, [questionData, isGenerating]);
+    }, [step, currentStationIdx]);
 
     // Setup Image Zoom Reset
     useEffect(() => {
         setScale(1);
         setPosition({ x: 0, y: 0 });
-    }, [currentIdx]);
+    }, [currentStationIdx]);
 
-    const processPDF = async () => {
+    // MAIN FUNCTION: PREPARE EXAM (EXTRACT + GENERATE)
+    const prepareExam = async () => {
         if (!file) return;
         setStep(StationStep.GENERATING);
         setLoadingProgress(0);
+        setLoadingText("Đang tải file PDF...");
+        setPreparedStations([]);
         
         try {
             const buffer = await file.arrayBuffer();
@@ -209,65 +296,82 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
             const effectiveEndPage = Math.min(endPage, totalPages);
             const effectiveStartPage = Math.max(1, startPage);
 
-            const pagesToProcess: number[] = [];
-            // IMPORTANT: We need pairs, so we iterate up to effectiveEndPage - 1
+            // 1. Create List of Candidate Page Pairs
+            const candidatePairs: number[] = []; // Stores the 'Question' page index
             for (let i = effectiveStartPage; i < effectiveEndPage; i++) {
-                pagesToProcess.push(i);
+                candidatePairs.push(i);
             }
 
-            // FETCH MORE CANDIDATES: Get 4x the limit to account for invalid slides (text-only, wrong topic)
-            const candidateLimit = Math.min(pagesToProcess.length, limitStations * 4);
-            const shuffled = pagesToProcess.filter(p => p < totalPages).sort(() => 0.5 - Math.random()).slice(0, candidateLimit);
+            // Shuffle and pick a buffer size (e.g., 3x limit to ensure we find enough valid ones)
+            const bufferLimit = Math.min(candidatePairs.length, limitStations * 4);
+            const shuffledCandidates = candidatePairs.sort(() => 0.5 - Math.random()).slice(0, bufferLimit);
             
-            const extractedImages: string[] = [];
-            const extractedAnswerImages: string[] = [];
-            const chunkStep = 90 / shuffled.length;
+            setLoadingText("Đang phân tích hình ảnh giải phẫu...");
+            let validCount = 0;
+            let processedCount = 0;
+            const validStations: PreparedStation[] = [];
 
-            for (let i = 0; i < shuffled.length; i++) {
-                // 1. Render Question Page (Page N)
-                const page = await pdf.getPage(shuffled[i]);
+            // 2. Loop through candidates until we have enough valid questions
+            for (let i = 0; i < shuffledCandidates.length; i++) {
+                if (validCount >= limitStations) break;
+
+                const pageIndex = shuffledCandidates[i];
+                
+                // Render Question Page (Page N)
+                const page = await pdf.getPage(pageIndex);
                 const viewport = page.getViewport({ scale: 1.5 }); 
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-                
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
-                extractedImages.push(canvas.toDataURL('image/jpeg', 0.8));
+                const imgBase64 = canvas.toDataURL('image/jpeg', 0.8);
 
-                // 2. Render Answer Page (Page N + 1) - The "Context"
-                // Most flashcards follow: Page 1 (Question Image) -> Page 2 (Answer Text/Key)
-                const pageAns = await pdf.getPage(shuffled[i] + 1);
+                // Render Answer Page (Page N + 1) - Context
+                const pageAns = await pdf.getPage(pageIndex + 1);
                 const viewportAns = pageAns.getViewport({ scale: 1.5 });
                 const canvasAns = document.createElement('canvas');
                 const contextAns = canvasAns.getContext('2d');
                 canvasAns.height = viewportAns.height;
                 canvasAns.width = viewportAns.width;
-
                 await pageAns.render({ canvasContext: contextAns, viewport: viewportAns }).promise;
-                extractedAnswerImages.push(canvasAns.toDataURL('image/jpeg', 0.8));
+                const answerImgBase64 = canvasAns.toDataURL('image/jpeg', 0.8);
+
+                // Send to AI
+                const searchTopic = topic.trim() ? topic : "Giải phẫu học";
+                setLoadingText(`Đang tạo trạm ${validCount + 1}/${limitStations}...`);
                 
-                setLoadingProgress(prev => Math.min(prev + chunkStep, 95));
+                try {
+                    const result = await generateStationQuestionFromImage(imgBase64, answerImgBase64, "Giải phẫu học", searchTopic);
+                    
+                    if (result.isValid && result.questions.length > 0) {
+                        validStations.push({
+                            image: imgBase64,
+                            questionData: result.questions[0]
+                        });
+                        validCount++;
+                    }
+                } catch (e) {
+                    console.error("Generation failed for page " + pageIndex, e);
+                }
+
+                processedCount++;
+                // Update progress bar: 0-30% extracting (skip), 30-100% generating
+                // Simply map validCount to 0-100
+                setLoadingProgress((validCount / limitStations) * 100);
             }
             
-            setLoadingProgress(100);
-            setLoadingText("Hoàn tất!");
-
-            setTimeout(() => {
-                setImages(extractedImages);
-                setAnswerImages(extractedAnswerImages);
+            if (validStations.length === 0) {
+                alert("Không tìm thấy hình ảnh giải phẫu phù hợp với chủ đề đã chọn trong các trang này. Vui lòng thử chọn chương khác.");
+                setStep(StationStep.SETUP);
+            } else {
+                setPreparedStations(validStations);
                 setStationResults([]);
-                setValidStationsCount(0);
+                setCurrentStationIdx(0);
                 setStep(StationStep.RUNNING);
-                setCurrentIdx(0);
-                
-                if (extractedImages.length > 0) {
-                    generateQuestion(extractedImages[0], extractedAnswerImages[0]);
-                } else {
-                    alert("Không tìm thấy trang nào trong khoảng đã chọn.");
-                    setStep(StationStep.SETUP);
-                }
-            }, 500);
+                setTimeLeft(timeLimit);
+                setCurrentUserAnswer('');
+            }
 
         } catch (err) {
             console.error(err);
@@ -276,65 +380,20 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
         }
     };
 
-    const generateQuestion = async (imgBase64: string, answerImgBase64: string) => {
-        setIsGenerating(true);
-        setQuestionData(null);
-        setCurrentUserAnswer('');
-        
-        try {
-            const searchTopic = topic.trim() ? topic : "Giải phẫu học";
-            
-            // Pass BOTH images to AI: Question + Answer Key
-            const result = await generateStationQuestionFromImage(imgBase64, answerImgBase64, "Giải phẫu học", searchTopic);
-            
-            if (result.isValid && result.questions.length > 0) {
-                setQuestionData(result.questions[0]);
-                setTimeLeft(timeLimit);
-                setIsGenerating(false); // SUCCESS: Only now do we stop generation
-            } else {
-                // AI said NO (Wrong topic OR Text-only page): Skip silently to next candidate
-                handleSkipToNext();
-            }
-        } catch (e) {
-            console.error("Gen Error", e);
-            // Error: Skip silently
-            handleSkipToNext();
-        }
-        // REMOVED FINALLY BLOCK to prevent overwriting state during recursion
-    };
-
-    // Called when AI rejects image -> Try next candidate WITHOUT counting as a question
-    const handleSkipToNext = () => {
-        const nextIdx = currentIdx + 1;
-        if (nextIdx < images.length) {
-            // IMPORTANT: Update index first, then call generation
-            setCurrentIdx(nextIdx);
-            generateQuestion(images[nextIdx], answerImages[nextIdx]);
-        } else {
-            // Ran out of ALL candidates
-            setIsGenerating(false); // Stop loading indicator
-            if (validStationsCount === 0) {
-                alert("Rái cá không tìm thấy hình ảnh giải phẫu phù hợp với chủ đề đã chọn trong các trang này. Hãy thử chọn chương khác hoặc file khác.");
-                setStep(StationStep.SETUP);
-            } else {
-                finishExam();
-            }
-        }
-    };
-
     // Called when User answers -> Record result AND check if exam is done
     const handleMoveToNextStation = () => {
-        if (!questionData) return;
+        const currentStation = preparedStations[currentStationIdx];
+        if (!currentStation) return;
 
         // Check Correctness
         const normalize = (s: string) => s.toLowerCase().trim().replace(/[.,-]/g, "");
         const userNorm = normalize(currentUserAnswer);
-        const correctNorm = normalize(questionData.correctAnswer);
+        const correctNorm = normalize(currentStation.questionData.correctAnswer);
         
         let isCorrect = userNorm === correctNorm;
         
-        if (!isCorrect && questionData.acceptedKeywords) {
-            isCorrect = questionData.acceptedKeywords.some((kw: string) => normalize(kw) === userNorm);
+        if (!isCorrect && currentStation.questionData.acceptedKeywords) {
+            isCorrect = currentStation.questionData.acceptedKeywords.some((kw: string) => normalize(kw) === userNorm);
         }
         
         // Loose check for long answers
@@ -343,36 +402,33 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
         }
 
         const result: StationResult = {
-            image: images[currentIdx],
-            question: questionData.questionText,
+            image: currentStation.image,
+            question: currentStation.questionData.questionText,
             userAnswer: currentUserAnswer,
-            correctAnswer: questionData.correctAnswer,
-            acceptedKeywords: questionData.acceptedKeywords || [],
-            explanation: questionData.explanation,
+            correctAnswer: currentStation.questionData.correctAnswer,
+            acceptedKeywords: currentStation.questionData.acceptedKeywords || [],
+            explanation: currentStation.questionData.explanation,
             isCorrect: isCorrect
         };
 
         setStationResults(prev => [...prev, result]);
         
-        const newValidCount = validStationsCount + 1;
-        setValidStationsCount(newValidCount);
-
-        if (newValidCount >= limitStations) {
-            finishExam();
+        const nextIdx = currentStationIdx + 1;
+        if (nextIdx < preparedStations.length) {
+            setCurrentStationIdx(nextIdx);
+            setCurrentUserAnswer('');
+            setTimeLeft(timeLimit);
+            // Reset Zoom
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
         } else {
-            // Try next image in pool
-            const nextIdx = currentIdx + 1;
-            if (nextIdx < images.length) {
-                setCurrentIdx(nextIdx);
-                generateQuestion(images[nextIdx], answerImages[nextIdx]);
-            } else {
-                finishExam(); // Ran out of candidates
-            }
+            finishExam();
         }
     };
 
     const finishExam = () => {
         setStep(StationStep.SUMMARY);
+        if (onExamComplete) onExamComplete();
     };
 
     // --- IMAGE VIEWER LOGIC ---
@@ -440,7 +496,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
         return (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-md transition-all duration-500">
                 <div className="w-full max-w-2xl p-8 relative">
-                    <h3 className={`text-3xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r ${loadingStyle.titleGradient} mb-16 animate-pulse`}>
+                    <h3 className={`text-3xl font-black text-center text-transparent bg-clip-text bg-gradient-to-r ${loadingStyle.titleGradient} mb-16 animate-pulse uppercase tracking-tight`}>
                         {loadingStyle.title}
                     </h3>
                     <div className="relative w-full h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-visible border border-slate-300 dark:border-slate-700">
@@ -451,6 +507,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                     </div>
                     <div className="mt-20 text-center">
                         <p className="text-xl font-bold text-slate-700 dark:text-slate-200 animate-fade-up" key={loadingText}>{loadingText}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Quá trình này có thể mất 1-2 phút để chuẩn bị đề tốt nhất.</p>
                     </div>
                 </div>
             </div>
@@ -484,7 +541,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                              <div><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-4 flex justify-between"><span className="uppercase tracking-wide flex items-center gap-2"><Timer className="w-4 h-4" /> Thời gian/trạm</span><span className={`px-2 py-0.5 rounded text-xs font-bold ${styles.rangeColor}`}>{timeLimit} giây</span></label><input type="range" min="15" max="120" step="15" value={timeLimit} onChange={(e) => setTimeLimit(Number(e.target.value))} className="liquid-slider w-full" style={{ '--range-progress': `${((timeLimit - 15) / 105) * 100}%` } as React.CSSProperties} /></div>
                         </div>
                         <div><label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2"><Lightbulb className="w-4 h-4" /> Chủ đề trọng tâm (Bắt buộc)</label><input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="VD: Xương chi trên, Tim..." className="w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium" /></div>
-                        <button onClick={processPDF} disabled={!file} className={`w-full py-5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 text-lg ${!file ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed' : styles.primary}`}><Play className="w-6 h-6 fill-current" /><span>Bắt đầu thi ngay</span></button>
+                        <button onClick={prepareExam} disabled={!file} className={`w-full py-5 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 flex items-center justify-center gap-3 text-lg ${!file ? 'bg-slate-300 dark:bg-slate-800 cursor-not-allowed' : styles.primary}`}><Play className="w-6 h-6 fill-current" /><span>Bắt đầu thi ngay</span></button>
                     </div>
                 </div>
             </div>
@@ -492,13 +549,15 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
     }
 
     if (step === StationStep.RUNNING) {
+        const currentStation = preparedStations[currentStationIdx];
+
         return (
             <div className="h-[calc(100vh-6rem)] flex flex-col md:flex-row gap-4 px-4 pb-4 max-w-[1600px] mx-auto">
                 {/* LEFT: IMAGE VIEWER (70%) */}
                 <div className="flex-1 md:flex-[7] bg-black rounded-3xl relative overflow-hidden group border border-slate-800 shadow-2xl flex flex-col">
                     <div className="absolute top-4 left-4 z-20 flex gap-2">
                         <div className="bg-black/50 text-white px-3 py-1 rounded-full text-sm font-mono backdrop-blur-md">
-                            Station {validStationsCount + 1}/{limitStations}
+                            Station {currentStationIdx + 1}/{preparedStations.length}
                         </div>
                     </div>
                     
@@ -510,23 +569,16 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                         onMouseUp={handleMouseUp}
                         onMouseLeave={handleMouseUp}
                     >
-                        {isGenerating ? (
-                            <div className="flex flex-col items-center justify-center text-white gap-3">
-                                <Loader2 className="w-10 h-10 animate-spin text-blue-500" />
-                                <p className="animate-pulse font-mono text-sm">Đang soi kính hiển vi...</p>
-                            </div>
-                        ) : (
-                            <img 
-                                ref={imageRef}
-                                src={images[currentIdx]} 
-                                alt="Station"
-                                className="max-w-full max-h-full object-contain transition-transform duration-100 ease-out select-none"
-                                style={{ 
-                                    transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` 
-                                }}
-                                draggable={false}
-                            />
-                        )}
+                        <img 
+                            ref={imageRef}
+                            src={currentStation?.image} 
+                            alt="Station"
+                            className="max-w-full max-h-full object-contain transition-transform duration-100 ease-out select-none"
+                            style={{ 
+                                transform: `translate(${position.x}px, ${position.y}px) scale(${scale})` 
+                            }}
+                            draggable={false}
+                        />
                     </div>
 
                     {/* Image Controls */}
@@ -554,21 +606,14 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
 
                     {/* Question Text */}
                     <div className="flex-1 flex flex-col justify-center mb-6">
-                        {isGenerating ? (
-                            <div className="space-y-3 animate-pulse">
-                                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4"></div>
-                                <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/2"></div>
-                            </div>
-                        ) : questionData ? (
-                            <div className="animate-in slide-in-from-right-4">
-                                <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white leading-relaxed">
-                                    {questionData.questionText}
-                                </h3>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 italic">
-                                    (Nhập tên cấu trúc chính xác)
-                                </p>
-                            </div>
-                        ) : null}
+                        <div className="animate-in slide-in-from-right-4">
+                            <h3 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white leading-relaxed">
+                                {currentStation?.questionData.questionText}
+                            </h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 italic">
+                                (Nhập tên cấu trúc chính xác)
+                            </p>
+                        </div>
                     </div>
 
                     {/* Input Area */}
@@ -581,15 +626,13 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme }) => {
                             onKeyDown={(e) => e.key === 'Enter' && handleMoveToNextStation()}
                             placeholder="Nhập đáp án của bạn..."
                             className={`w-full p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-lg font-medium outline-none transition-all mb-4 ${styles.inputFocus} focus:ring-2`}
-                            disabled={isGenerating}
                             autoComplete="off"
                         />
                         <button 
                             onClick={handleMoveToNextStation}
-                            disabled={isGenerating}
                             className={`w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2 ${styles.primary}`}
                         >
-                            {validStationsCount === limitStations - 1 ? "Nộp bài" : "Tiếp tục"} <ArrowRight className="w-5 h-5" />
+                            {currentStationIdx === preparedStations.length - 1 ? "Nộp bài" : "Tiếp tục"} <ArrowRight className="w-5 h-5" />
                         </button>
                     </div>
                 </div>

@@ -14,6 +14,9 @@ export interface UserProfile {
   avatar?: string; // Base64 image string
   isVipShowgirl?: boolean; // Trạng thái đã mua giao diện Showgirl
   isVip1989?: boolean; // Trạng thái đã mua giao diện 1989
+  isVipFolklore?: boolean; // Trạng thái đã mua giao diện Folklore
+  isVipTTPD?: boolean; // Trạng thái đã mua giao diện TTPD
+  isVipEvermore?: boolean; // Trạng thái đạt được giao diện Evermore (Achievement)
 }
 
 export interface MCQQuestion {
