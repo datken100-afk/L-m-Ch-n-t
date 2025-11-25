@@ -40,7 +40,7 @@ const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function retryGeminiCall<T>(
   call: () => Promise<T>,
   retries: number = 3,
-  initialDelay: number = 2000
+  initialDelay: number = 4000 // Increased to 4000ms to be safer against 429
 ): Promise<T> {
   let lastError: any;
   
@@ -89,7 +89,6 @@ async function retryGeminiCall<T>(
 }
 
 // --- INTELLIGENT CONTEXT FILTERING (RELAXED) ---
-// With larger context window, we can be less aggressive about filtering.
 function filterRelevantContent(content: string, topic: string, limit: number): string {
     if (!topic || topic.trim().length < 2) {
         return content.substring(0, limit); 
@@ -147,7 +146,6 @@ export const generateMCQQuestions = async (
 ): Promise<GeneratedMCQResponse> => {
   const ai = getAI();
 
-  // REFINED PROMPT FOR STRICTER TOPIC ADHERENCE AND DIFFICULTY ANALYSIS
   let systemInstruction = `
     Bạn là Giáo sư GIẢI PHẪU ĐẠI THỂ (Gross Anatomy) hàng đầu tại Đại học Y Dược.
     Nhiệm vụ: Phân tích KỸ LƯỠNG tài liệu được cung cấp (nếu có) để tạo CHÍNH XÁC ${count} câu trắc nghiệm.
@@ -217,7 +215,6 @@ export const generateMCQQuestions = async (
 
         if (item.content && item.isText) {
              const remaining = charLimit - currentChars;
-             // Filter content to prioritize the topic, but keep large context
              const relevantContent = filterRelevantContent(item.content, topic, remaining);
              
              parts.push({ text: relevantContent });
@@ -232,7 +229,6 @@ export const generateMCQQuestions = async (
   addContentParts(files.clinical, "LÂM SÀNG (Dùng cho câu hỏi Lâm sàng)", LIMIT_CLINICAL_CHARS);
   addContentParts(files.sample, "ĐỀ MẪU", LIMIT_SAMPLE_CHARS);
 
-  // Final Reminder in prompt
   parts.push({ text: `YÊU CẦU: Tạo ${count} câu hỏi trắc nghiệm về chủ đề "${topic}". Hãy phân tích kỹ các file trên (đặc biệt là file Lâm sàng cho câu hỏi Lâm sàng) để tạo câu hỏi sát thực tế.` });
 
   return retryGeminiCall(async () => {
@@ -264,48 +260,50 @@ export const generateStationQuestionFromImage = async (
 ): Promise<{ questions: any[], isValid: boolean }> => {
     const ai = getAI();
 
-    // Extract clean base64
     const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
     const cleanAnswerBase64 = answerImageBase64 ? answerImageBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "") : null;
 
-    // STRICTER SYSTEM INSTRUCTION
+    // EXTREME ZONING INSTRUCTION
     const systemInstruction = `
-        Bạn là Hội đồng Khảo thí Giải phẫu học cực kỳ nghiêm ngặt.
-        Nhiệm vụ: Kiểm duyệt hình ảnh và tạo 1 câu hỏi định danh cấu trúc (Spot Test) NẾU VÀ CHỈ NẾU hình ảnh đạt chuẩn.
-
-        DỮ LIỆU:
-        - HÌNH 1: Đề bài (Thường là hình vẽ giải phẫu).
-        - HÌNH 2: Đáp án/Chú thích (Nếu có).
-        - CHỦ ĐỀ YÊU CẦU: "${detailedTopic}".
-
-        QUY TRÌNH KIỂM DUYỆT (STEP-BY-STEP):
+        Bạn là Hội đồng Khảo thí Giải phẫu học (Chế độ Chạy trạm / Spot Test).
         
-        1. **BƯỚC 1: KIỂM TRA LOẠI HÌNH ẢNH (Quan trọng nhất)**
-           - Nhìn vào HÌNH 1.
-           - Nếu HÌNH 1 chứa 80% là văn bản, danh sách (list), bảng biểu (table), hoặc mục lục -> **TRẢ VỀ isValid: false NGAY LẬP TỨC**.
-           - Nếu HÌNH 1 là trang trắng hoặc chỉ có tiêu đề -> **TRẢ VỀ isValid: false**.
-           - HÌNH 1 BẮT BUỘC phải là HÌNH VẼ MINH HỌA GIẢI PHẪU (Atlas, mô hình, xác, xương, cơ...).
+        MỤC TIÊU: Tìm ảnh giải phẫu sạch, có chú thích số/đường dẫn, đúng chủ đề "${detailedTopic}".
 
-        2. **BƯỚC 2: KIỂM TRA CHỦ ĐỀ**
-           - Hình ảnh có liên quan đến "${detailedTopic}" không?
-           - Ví dụ: Yêu cầu "Tim mạch" nhưng hình là "Xương chi dưới" -> **TRẢ VỀ isValid: false**.
-           - Chỉ chấp nhận nếu đúng hoặc liên quan mật thiết đến chủ đề.
+        INPUT:
+        - ẢNH 1: Trang câu hỏi (có thể là hình vẽ, X-quang, mô hình).
+        - ẢNH 2: Trang đáp án (hoặc trang liền kề).
 
-        3. **BƯỚC 3: TẠO CÂU HỎI (Chỉ khi Bước 1 & 2 OK)**
-           - Tìm một chi tiết có số hoặc mũi tên trên HÌNH 1.
-           - Đối chiếu HÌNH 2 để tìm tên chính xác.
-           - Nếu không có số: Hãy tự chọn một cấu trúc NỔI BẬT NHẤT và hỏi.
-           - Output câu hỏi JSON.
+        QUY TRÌNH "FAIL-FAST" (PHẢI TUÂN THỦ NGHIÊM NGẶT):
+        
+        1. **CHECK VĂN BẢN (TEXT HEAVY CHECK) - CỰC KỲ QUAN TRỌNG**:
+           - Nếu trang chứa chủ yếu là chữ (Text > 25% diện tích) -> **REJECT NGAY**.
+           - Nếu là Trang Bìa, Mục Lục, Lời nói đầu, Danh sách thuật ngữ, Index -> **REJECT NGAY**.
+           - Nếu là Bảng biểu (Table) toàn chữ -> **REJECT NGAY**.
+           - Nếu hình ảnh nhỏ (thumbnail) và xung quanh toàn là text mô tả -> **REJECT NGAY**.
+           - CHỈ CHẤP NHẬN trang có HÌNH VẼ GIẢI PHẪU LỚN, RÕ RÀNG, CHIẾM ĐA SỐ DIỆN TÍCH.
+
+        2. **CHECK CHỦ ĐỀ (ZONING)**: 
+           - Hình ảnh có thuộc vùng "${detailedTopic}" không? 
+           - Nếu chủ đề là "Chi trên" mà hình là "Tim" -> REJECT ngay.
+           - Nếu hình ảnh không có chi tiết giải phẫu nào được đánh số hoặc chỉ mũi tên (Leader lines) -> REJECT ngay.
+
+        3. **TRÍCH XUẤT (NẾU PASS BƯỚC 1 & 2)**:
+           - Chọn 1 chi tiết CÓ ĐÁNH SỐ RÕ RÀNG trên Hình 1.
+           - Dùng Hình 2 để tìm tên chính xác.
+           - **BẮT BUỘC: DỊCH TÊN CẤU TRÚC SANG TIẾNG VIỆT CHUẨN (Danh pháp giải phẫu VN).**
+           - Nếu tên gốc là Latin/Anh, PHẢI dịch sang Tiếng Việt tương ứng. Ví dụ: "Deltoid muscle" -> "Cơ delta", "Humerus" -> "Xương cánh tay".
+           - Không dùng tên tiếng Anh làm đáp án chính (chỉ để trong keywords).
+           - Tạo câu hỏi "Chi tiết số X là gì?".
 
         OUTPUT JSON:
         {
-            "isValid": boolean, // False nếu là trang chữ/mục lục/sai chủ đề.
+            "isValid": boolean, // TRUE chỉ khi hình ảnh đúng chủ đề VÀ là hình giải phẫu rõ ràng, KHÔNG CÓ NHIỀU CHỮ.
             "questions": [
                 {
-                    "questionText": "Cấu trúc số X là gì?",
-                    "correctAnswer": "Tên chuẩn (Latin/Việt)",
-                    "acceptedKeywords": ["tên khác"],
-                    "explanation": "Mô tả ngắn gọn vị trí/chức năng."
+                    "questionText": "Chi tiết số [X] là gì?", 
+                    "correctAnswer": "Tên Tiếng Việt chuẩn",
+                    "acceptedKeywords": ["Tên Latin", "Tên tiếng Anh", "Tên viết tắt", "Tên Tiếng Việt không dấu"],
+                    "explanation": "Mô tả ngắn về vị trí/chức năng bằng Tiếng Việt."
                 }
             ]
         }
@@ -336,16 +334,13 @@ export const generateStationQuestionFromImage = async (
     };
 
     const parts: any[] = [];
-    
-    // 1. Add Question Image
     parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } });
     
-    // 2. Add Answer Image if available
     if (cleanAnswerBase64) {
         parts.push({ inlineData: { mimeType: 'image/jpeg', data: cleanAnswerBase64 } });
-        parts.push({ text: `HÌNH 1 là CÂU HỎI. HÌNH 2 là ĐÁP ÁN. Kiểm tra kỹ xem HÌNH 1 có phải là hình vẽ giải phẫu không. Nếu toàn chữ -> isValid: false.` });
+        parts.push({ text: `ẢNH 1: Đề thi. ẢNH 2: Đáp án/Tham khảo. Chủ đề bắt buộc: "${detailedTopic}". Nếu không đúng chủ đề hoặc không phải hình giải phẫu, trả về isValid: false ngay.` });
     } else {
-        parts.push({ text: `Phân tích hình ảnh này. Nếu là văn bản/text -> isValid: false.` });
+        parts.push({ text: `Chủ đề: "${detailedTopic}". Nếu không đúng, isValid: false.` });
     }
 
     return retryGeminiCall(async () => {
@@ -359,7 +354,7 @@ export const generateStationQuestionFromImage = async (
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.2 // Low temperature to be strict about isValid rules
+                temperature: 0.1
             }
         });
         
@@ -368,8 +363,6 @@ export const generateStationQuestionFromImage = async (
         try {
             return JSON.parse(text);
         } catch (e) {
-            // If JSON parsing fails, treat as invalid
-            console.error("JSON Parse Error", text);
             return { questions: [], isValid: false };
         }
     });
@@ -378,14 +371,11 @@ export const generateStationQuestionFromImage = async (
 export const chatWithOtter = async (history: any[], newMessage: string, image?: string): Promise<string> => {
     const ai = getAI();
 
-    // Prepare conversation history for generateContent (Stateless usage)
-    // history contains objects like { role: 'user'|'model', text: string }
     const contents: any[] = history.map(h => ({
         role: h.role === 'model' ? 'model' : 'user',
         parts: [{ text: h.text }] 
     }));
 
-    // Prepare the new message parts
     const currentParts: any[] = [];
     if (image) {
         const cleanBase64 = image.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, "");
@@ -393,14 +383,12 @@ export const chatWithOtter = async (history: any[], newMessage: string, image?: 
     }
     currentParts.push({ text: newMessage });
 
-    // Add new message to the end of contents
     contents.push({
         role: 'user',
         parts: currentParts
     });
 
     return retryGeminiCall(async () => {
-        // Use generateContent directly instead of chats.create/sendMessage to avoid ContentUnion/State errors
         const response = await ai.models.generateContent({
             model: MODEL_CHAT,
             contents: contents,
@@ -416,30 +404,17 @@ export const chatWithOtter = async (history: any[], newMessage: string, image?: 
 export const analyzeResultWithOtter = async (topic: string, stats: any): Promise<MentorResponse> => {
     const ai = getAI();
     
-    // UPGRADED SYSTEM INSTRUCTION FOR DEEP ANALYSIS
     const systemInstruction = `
-        Bạn là Rái Cá Mentor - một Giáo sư Giải phẫu học hàng đầu, rất nghiêm khắc về chuyên môn nhưng cũng vui tính (dùng emoji 🦦, 🧠, 🦴).
-        
-        Nhiệm vụ: Phân tích kết quả bài thi của sinh viên y khoa một cách chuyên sâu (Deep Dive Analysis).
-        
-        Dữ liệu đầu vào:
-        - Chủ đề: ${topic}
-        - Số liệu: ${JSON.stringify(stats)} (Số câu đúng/tổng theo từng mức độ khó).
-
-        Yêu cầu output (JSON):
-        1. "analysis": Một đoạn văn ngắn (3-4 câu) nhận xét tổng quan. Hãy so sánh khả năng ghi nhớ (Lý thuyết) với khả năng vận dụng (Lâm sàng). Nếu làm sai câu lâm sàng, hãy nhắc nhở về tầm quan trọng của việc ứng dụng. Nếu sai câu cơ bản, hãy nhắc học lại giải phẫu đại thể.
-        2. "strengths": Liệt kê 2-3 điểm mạnh cụ thể dựa trên số liệu (VD: "Tư duy lâm sàng sắc bén", "Nắm vững chi tiết giải phẫu học").
-        3. "weaknesses": Liệt kê 2-3 điểm yếu chí mạng cần khắc phục ngay (VD: "Hổng kiến thức giải phẫu định khu", "Chưa liên kết được giải phẫu và triệu chứng").
-        4. "roadmap": Đưa ra một lộ trình 3 bước (Step 1, Step 2, Step 3) cực kỳ cụ thể để cải thiện chủ đề này. 
-           - Step 1: Tập trung vào tài liệu nào, phương pháp nào (Atlas Netter, Flashcard...).
-           - Step 2: Cách tư duy (Liên hệ chức năng, vẽ sơ đồ tư duy...).
-           - Step 3: Luyện tập nâng cao (Giải case study, chạy trạm...).
+        Bạn là Rái Cá Mentor - một Giáo sư Giải phẫu học hàng đầu.
+        Nhiệm vụ: Phân tích kết quả bài thi của sinh viên y khoa.
+        Dữ liệu: Chủ đề "${topic}", Kết quả ${JSON.stringify(stats)}.
+        Output JSON: analysis (nhận xét), strengths (điểm mạnh), weaknesses (điểm yếu), roadmap (lộ trình 3 bước).
     `;
 
     const schema: Schema = {
         type: Type.OBJECT,
         properties: {
-            analysis: { type: Type.STRING, description: "Nhận xét chuyên sâu, so sánh lý thuyết và lâm sàng." },
+            analysis: { type: Type.STRING },
             strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
             weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
             roadmap: {
@@ -447,8 +422,8 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
                 items: {
                     type: Type.OBJECT,
                     properties: {
-                        step: { type: Type.STRING, description: "Tên bước (VD: Bước 1: Củng cố nền tảng)" },
-                        details: { type: Type.STRING, description: "Chi tiết hành động cần làm" }
+                        step: { type: Type.STRING },
+                        details: { type: Type.STRING }
                     },
                     required: ["step", "details"]
                 }
@@ -462,13 +437,13 @@ export const analyzeResultWithOtter = async (topic: string, stats: any): Promise
             model: MODEL_MCQ, 
             contents: [{
                 role: 'user',
-                parts: [{ text: `Phân tích kết quả bài thi chủ đề "${topic}". Số liệu chi tiết: ${JSON.stringify(stats)}.` }]
+                parts: [{ text: `Phân tích kết quả bài thi chủ đề "${topic}".` }]
             }],
             config: {
                 systemInstruction: systemInstruction,
                 responseMimeType: "application/json",
                 responseSchema: schema,
-                temperature: 0.7 // Increase slightly for more creative advice
+                temperature: 0.7
             }
         });
 
