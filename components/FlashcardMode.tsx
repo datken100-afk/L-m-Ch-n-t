@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, Plus, Save, Trash2, Edit, Play, RotateCw, Layers, ChevronLeft, ChevronRight, StickyNote, LayoutGrid, BrainCircuit, Clock, Calendar, BarChart3, CheckCircle2, ThumbsUp, ThumbsDown, Hand, Loader2 } from 'lucide-react';
+import { ArrowRight, Plus, Save, Trash2, Edit, Play, RotateCw, Layers, ChevronLeft, ChevronRight, StickyNote, LayoutGrid, BrainCircuit, Clock, Calendar, BarChart3, CheckCircle2, ThumbsUp, ThumbsDown, Hand, Loader2, FlaskConical } from 'lucide-react';
 import { ThemeType } from '../App';
 import { FlashcardDeck, Flashcard, FlashcardSRData, UserProfile } from '../types';
 import { db } from '../firebaseConfig';
 import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { RichTextRenderer } from './RichTextRenderer';
 
 interface FlashcardModeProps {
     onBack: () => void;
@@ -249,6 +250,49 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
         setView('EDITOR');
     };
 
+    const handleCreateSampleChemistry = () => {
+        const chemistryCards: Flashcard[] = [
+            {
+                id: Date.now().toString() + '1',
+                front: 'Phương trình quang hợp tổng quát?',
+                back: '$6CO_2 + 6H_2O \\rightarrow C_6H_{12}O_6 + 6O_2$'
+            },
+            {
+                id: Date.now().toString() + '2',
+                front: 'Công thức tính pH?',
+                back: '$pH = -\\log[H^+]$'
+            },
+            {
+                id: Date.now().toString() + '3',
+                front: 'Phương trình Henderson-Hasselbalch?',
+                back: '$pH = pK_a + \\log(\\frac{[A^-]}{[HA]})$'
+            },
+            {
+                id: Date.now().toString() + '4',
+                front: 'Cấu trúc của Glucose (Mạch hở)?',
+                back: 'Công thức phân tử: $C_6H_{12}O_6$'
+            },
+            {
+                id: Date.now().toString() + '5',
+                front: 'Năng lượng tự do Gibbs ($\\Delta G$)?',
+                back: '$\\Delta G = \\Delta H - T\\Delta S$'
+            }
+        ];
+
+        const newDeck: FlashcardDeck = {
+            id: Date.now().toString(),
+            title: 'Hóa Sinh Đại Cương (Mẫu)',
+            description: 'Các công thức quan trọng với LaTeX',
+            cards: chemistryCards,
+            createdAt: Date.now()
+        };
+
+        const newDecks = [newDeck, ...decks];
+        setDecks(newDecks);
+        saveDeckToCloud(newDeck);
+        alert("Đã tạo bộ đề mẫu Hóa Sinh thành công!");
+    };
+
     const handleEditDeck = (deck: FlashcardDeck) => {
         setDeckTitle(deck.title);
         setDeckDesc(deck.description);
@@ -453,12 +497,21 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                             <p className="text-lg text-white/90">{theme === 'showgirl' ? "Kịch bản bỏ túi cho màn trình diễn." : theme === 'ttpd' ? "Don't want money, just someone who wants my company." : "Tự tạo bộ thẻ ghi nhớ và ôn tập mọi lúc."}</p>
                         </div>
                     </div>
-                    <button 
-                        onClick={handleCreateDeck}
-                        className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-transform active:scale-95 flex items-center gap-2"
-                    >
-                        <Plus className="w-5 h-5" /> Tạo bộ thẻ mới
-                    </button>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleCreateSampleChemistry}
+                            className="bg-white/20 text-white border border-white/40 px-4 py-3 rounded-xl font-bold shadow-lg hover:bg-white/30 transition-transform active:scale-95 flex items-center gap-2"
+                            title="Tạo đề mẫu Hóa Sinh để test công thức LaTeX"
+                        >
+                            <FlaskConical className="w-5 h-5" /> Hóa Sinh (Mẫu)
+                        </button>
+                        <button 
+                            onClick={handleCreateDeck}
+                            className="bg-white text-slate-900 px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-transform active:scale-95 flex items-center gap-2"
+                        >
+                            <Plus className="w-5 h-5" /> Tạo mới
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -559,6 +612,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                     placeholder="Mô tả nội dung bộ thẻ..."
                     className="w-full bg-transparent border-b border-slate-200 dark:border-slate-700 focus:border-amber-500 outline-none pb-2 text-slate-600 dark:text-slate-300 placeholder-slate-300"
                 />
+                <div className="mt-2 text-xs text-slate-400 italic">Mẹo: Nhập công thức Toán/Hóa học bằng cách đặt trong dấu $, ví dụ: $H_2O$ hoặc $E=mc^2$.</div>
             </div>
 
             <div className="space-y-4">
@@ -578,6 +632,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none resize-none h-24 text-sm"
                                     placeholder="Nhập nội dung mặt trước..."
                                 />
+                                {/* Preview for Math */}
+                                {card.front.includes('$') && (
+                                    <div className="mt-2 text-xs p-2 bg-slate-50 dark:bg-black/20 rounded border border-slate-100 dark:border-slate-800">
+                                        <span className="text-slate-400 block mb-1">Xem trước:</span>
+                                        <RichTextRenderer content={card.front} />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 mb-1">Mặt sau (Đáp án)</label>
@@ -591,6 +652,13 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                     className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-amber-500 outline-none resize-none h-24 text-sm"
                                     placeholder="Nhập nội dung mặt sau..."
                                 />
+                                 {/* Preview for Math */}
+                                 {card.back.includes('$') && (
+                                    <div className="mt-2 text-xs p-2 bg-slate-50 dark:bg-black/20 rounded border border-slate-100 dark:border-slate-800">
+                                        <span className="text-slate-400 block mb-1">Xem trước:</span>
+                                        <RichTextRenderer content={card.back} />
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button 
@@ -655,7 +723,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                                 <span>Còn lại: {smartQueue.length}</span>
                                 <span className="text-xs text-slate-300 mx-1">|</span>
                                 <div className="flex items-center gap-1 text-[10px]">
-                                    <Hand className="w-3 h-3" /> Vuốt để học
+                                    <Hand className="w-3 h-3" /> Vuốt để đánh giá
                                 </div>
                             </div>
                         ) : (
@@ -721,7 +789,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
                             )}
 
                             <div className="text-2xl md:text-4xl font-bold text-slate-800 dark:text-white leading-relaxed">
-                                {card.front}
+                                <RichTextRenderer content={card.front} />
                             </div>
                             <div className="absolute bottom-6 text-slate-400 text-sm animate-pulse flex items-center gap-2">
                                 <RotateCw className="w-4 h-4" /> Chạm để lật / Vuốt để đánh giá
@@ -751,7 +819,7 @@ export const FlashcardMode: React.FC<FlashcardModeProps> = ({ onBack, theme, use
 
                             <span className={`absolute top-6 left-6 text-xs font-bold ${styles.accent} uppercase tracking-widest`}>Đáp án</span>
                             <div className={`text-xl md:text-3xl font-medium ${styles.accent} leading-relaxed`}>
-                                {card.back}
+                                <RichTextRenderer content={card.back} />
                             </div>
                         </div>
                     </div>

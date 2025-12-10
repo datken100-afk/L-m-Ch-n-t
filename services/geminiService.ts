@@ -152,7 +152,13 @@ export const generateMCQQuestions = async (
     Chủ đề Trọng Tâm: "${topic}".
     
     YÊU CẦU VỀ ĐỘ KHÓ (BẮT BUỘC TUÂN THỦ):
-    Bạn chỉ được tạo câu hỏi thuộc các mức độ sau: ${difficulties.join(', ')}. Hãy chia tỷ lệ hợp lý.
+    Bạn chỉ được tạo câu hỏi thuộc các mức độ sau: ${difficulties.join(', ')}.
+    
+    TỈ LỆ PHÂN BỐ CÂU HỎI (QUAN TRỌNG):
+    Nếu danh sách độ khó cho phép, hãy tuân thủ tỉ lệ:
+    - **60%** câu hỏi thuộc mức độ: ${Difficulty.REMEMBER} (Ghi nhớ) + ${Difficulty.UNDERSTAND} (Hiểu).
+    - **40%** câu hỏi thuộc mức độ: ${Difficulty.APPLY} (Vận dụng thấp) + ${Difficulty.CLINICAL} (Lâm sàng).
+    (Nếu người dùng không chọn đủ các mức độ trên, hãy chia đều cho các mức độ được chọn).
     
     CHIẾN LƯỢC PHÂN TÍCH FILE & TẠO CÂU HỎI:
     
@@ -295,14 +301,20 @@ export const generateStationQuestionFromImage = async (
            - Không dùng tên tiếng Anh làm đáp án chính (chỉ để trong keywords).
            - Tạo câu hỏi "Chi tiết số X là gì?".
 
+        4. **TỐI ƯU KEYWORDS (acceptedKeywords)**:
+           - Hãy liệt kê TẤT CẢ các cách gọi thông dụng có thể có.
+           - Viết tắt: ĐM (Động mạch), TM (Tĩnh mạch), TK (Thần kinh), DC (Dây chằng). Ví dụ: "Động mạch nách" -> thêm "ĐM nách".
+           - Tên ngắn gọn: Bỏ bớt từ loại. Ví dụ: "Cơ nhị đầu cánh tay" -> thêm "Cơ nhị đầu", "Nhị đầu". "Xương quay" -> thêm "Quay".
+           - Tên Latin/Anh (nếu phổ biến).
+
         OUTPUT JSON:
         {
-            "isValid": boolean, // TRUE chỉ khi hình ảnh đúng chủ đề VÀ là hình giải phẫu rõ ràng, KHÔNG CÓ NHIỀU CHỮ.
+            "isValid": boolean, 
             "questions": [
                 {
                     "questionText": "Chi tiết số [X] là gì?", 
                     "correctAnswer": "Tên Tiếng Việt chuẩn",
-                    "acceptedKeywords": ["Tên Latin", "Tên tiếng Anh", "Tên viết tắt", "Tên Tiếng Việt không dấu"],
+                    "acceptedKeywords": ["Tên Latin", "Tên tiếng Anh", "Tên viết tắt (ĐM...)", "Tên ngắn gọn"],
                     "explanation": "Mô tả ngắn về vị trí/chức năng bằng Tiếng Việt."
                 }
             ]

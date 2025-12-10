@@ -103,6 +103,71 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
     
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // --- ANSWER CHECKING LOGIC ---
+    
+    const normalizeAnswer = (str: string) => {
+        if (!str) return "";
+        let s = str.toLowerCase().trim();
+        // Replace punctuation with space
+        s = s.replace(/[.,:;()\-]/g, " ");
+        
+        // Expand abbreviations (must be whole words)
+        const abbreviations: Record<string, string> = {
+            "đm": "động mạch",
+            "tm": "tĩnh mạch",
+            "tk": "thần kinh",
+            "dc": "dây chằng",
+            "gm": "gân mạc",
+            "hạch": "hạch bạch huyết",
+            "nm": "niêm mạc"
+        };
+        
+        s = s.split(" ").map(word => abbreviations[word] || word).join(" ");
+        
+        // Remove extra spaces
+        s = s.replace(/\s+/g, " ").trim();
+        return s;
+    };
+
+    // Function to remove generic anatomical prefixes to find the "core" name
+    const getCoreName = (str: string) => {
+        const prefixes = [
+            "cơ", "xương", "động mạch", "tĩnh mạch", "thần kinh", "dây chằng", 
+            "khớp", "xoang", "ngách", "rãnh", "hố", "mào", "gai", "củ", "lồi cầu",
+            "bờ", "mặt", "ngành", "thân", "đầu", "cổ"
+        ];
+        // Create regex from prefixes
+        const prefixRegex = new RegExp(`^(${prefixes.join("|")})\\s+`, "i");
+        return str.replace(prefixRegex, "").trim();
+    };
+
+    const checkAnswer = (userRaw: string, correctRaw: string, keywords: string[] = []) => {
+        const u = normalizeAnswer(userRaw);
+        const c = normalizeAnswer(correctRaw);
+        
+        if (!u) return false;
+        
+        // 1. Exact Match (Normalized)
+        if (u === c) return true;
+        
+        // 2. Keyword Match
+        if (keywords && keywords.some(k => normalizeAnswer(k) === u)) return true;
+        
+        // 3. Core Name Match (ignoring prefixes like "cơ", "xương" if user omitted them)
+        const cCore = getCoreName(c);
+        const uCore = getCoreName(u); 
+        
+        if (u === cCore) return true; // Correct: "Cơ A", User: "A"
+        if (uCore === c) return true; // Correct: "A", User: "Cơ A"
+        if (uCore === cCore && uCore.length > 2) return true; // Both typed "A" (ignoring prefixes)
+        
+        // 4. Substring Match (The user answer is a significant part of the correct answer)
+        // Constraint: User answer must be at least 60% of the length of correct answer
+        if (c.includes(u) && u.length >= c.length * 0.6) return true;
+        
+        return false;
+    }
+
     // THEME STYLES
     const getThemeStyles = () => {
         switch(theme) {
@@ -317,12 +382,12 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
             for (let i = effectiveStartPage; i < effectiveEndPage; i++) candidatePairs.push(i);
             const shuffledCandidates = candidatePairs.sort(() => 0.5 - Math.random());
             
-            setLoadingText("Đang quét định khu giải phẫu (Batch Processing)...");
+            setLoadingText("Đang quét định khu giải phẫu (Fast Scan)...");
             let validCount = 0;
             const validStations: PreparedStation[] = [];
             
-            // OPTIMIZED: Batch size of 3 is safer for rate limits than 5
-            const BATCH_SIZE = 3; 
+            // OPTIMIZED: Increased Batch Size + Text Filtering
+            const BATCH_SIZE = 4; 
 
             const searchTopic = topic.trim() ? topic : "Giải phẫu học";
 
@@ -336,25 +401,44 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
                     // Execute Batch
                     const results = await Promise.all(batch.map(async (pageIndex) => {
                         try {
-                            // High Res Render (2.0)
                             const page = await pdf.getPage(pageIndex);
-                            const viewport = page.getViewport({ scale: 2.0 }); 
+                            
+                            // 1. FAST FAIL: CHECK TEXT CONTENT FIRST
+                            // Get text content to filter out Textbook pages (too many words) or Index pages
+                            const textContent = await page.getTextContent();
+                            const textItems = textContent.items.map((item: any) => item.str).join(' ');
+                            
+                            // Heuristic: Atlas images usually have labels (numbers) and minimal text.
+                            // Textbook pages have huge chunks of text.
+                            if (textItems.length > 2000) {
+                                // Skip this page, it's likely text-heavy
+                                return { success: false };
+                            }
+                            if (textItems.length < 10) {
+                                // Skip empty/blank pages
+                                return { success: false };
+                            }
+
+                            // 2. OPTIMIZED RENDER: Reduce Scale from 2.0 to 1.5
+                            // 1.5 is sufficient for Gemini 2.5 Flash to read numbers, but much smaller payload.
+                            const viewport = page.getViewport({ scale: 1.5 }); 
                             const canvas = document.createElement('canvas');
                             const context = canvas.getContext('2d');
                             canvas.height = viewport.height;
                             canvas.width = viewport.width;
                             await page.render({ canvasContext: context, viewport: viewport }).promise;
-                            const imgBase64 = canvas.toDataURL('image/jpeg', 0.85);
+                            const imgBase64 = canvas.toDataURL('image/jpeg', 0.80); // Compress slightly more (0.85 -> 0.80)
 
-                            // Answer Page
+                            // Answer Page (Next Page)
+                            // Also optimization: only render if first page passed checks
                             const pageAns = await pdf.getPage(pageIndex + 1);
-                            const viewportAns = pageAns.getViewport({ scale: 2.0 });
+                            const viewportAns = pageAns.getViewport({ scale: 1.5 });
                             const canvasAns = document.createElement('canvas');
                             const contextAns = canvasAns.getContext('2d');
                             canvasAns.height = viewportAns.height;
                             canvasAns.width = viewportAns.width;
                             await pageAns.render({ canvasContext: contextAns, viewport: viewportAns }).promise;
-                            const answerImgBase64 = canvasAns.toDataURL('image/jpeg', 0.85);
+                            const answerImgBase64 = canvasAns.toDataURL('image/jpeg', 0.80);
 
                             // AI Call
                             const result = await generateStationQuestionFromImage(imgBase64, answerImgBase64, "Giải phẫu học", searchTopic);
@@ -390,9 +474,9 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
                     setValidFoundCount(validCount);
                     setLoadingProgress((validCount / limitStations) * 100);
 
-                    // Rate Limit Buffer: Wait 2s between batches to avoid spiking RPM
+                    // Reduced Wait Time (1000ms is usually safe for Flash tier)
                     if (validCount < limitStations && i + BATCH_SIZE < shuffledCandidates.length) {
-                        await wait(2000);
+                        await wait(1000); 
                     }
                 }
             } catch (err: any) {
@@ -441,15 +525,8 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
         const currentStation = preparedStations[currentStationIdx];
         if (!currentStation) return;
 
-        const normalize = (s: string) => s.toLowerCase().trim().replace(/[.,-]/g, "");
-        const userNorm = normalize(currentUserAnswer);
-        const correctNorm = normalize(currentStation.questionData.correctAnswer);
-        
-        let isCorrect = userNorm === correctNorm;
-        if (!isCorrect && currentStation.questionData.acceptedKeywords) {
-            isCorrect = currentStation.questionData.acceptedKeywords.some((kw: string) => normalize(kw) === userNorm);
-        }
-        if (!isCorrect && userNorm.length > 4 && correctNorm.includes(userNorm)) isCorrect = true;
+        // Use smart check logic
+        const isCorrect = checkAnswer(currentUserAnswer, currentStation.questionData.correctAnswer, currentStation.questionData.acceptedKeywords);
 
         setStationResults(prev => [...prev, {
             image: currentStation.image,
@@ -517,7 +594,7 @@ export const StationMode: React.FC<StationModeProps> = ({ onBack, theme, onExamC
                     <div className="mt-12">
                         <p className={`text-xl font-bold animate-fade-up ${loadingStyle.textColor}`}>{loadingText}</p>
                         <p className={`text-sm mt-2 opacity-80 ${loadingStyle.textColor}`}>Đã tìm thấy: <strong>{validFoundCount}</strong>/{limitStations}</p>
-                        <p className={`text-xs mt-1 italic opacity-60 ${loadingStyle.textColor}`}>(Tốc độ được điều chỉnh để phù hợp với giới hạn API)</p>
+                        <p className={`text-xs mt-1 italic opacity-60 ${loadingStyle.textColor}`}>(Đang lọc bỏ trang text và xử lý Batch...)</p>
                     </div>
                 </div>
             </div>

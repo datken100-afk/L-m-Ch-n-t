@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle, Lock, CheckCircle, Star, Heart, Copy, Coffee, Ticket, Trees, ShoppingBag, Feather, Flame } from 'lucide-react';
+import { Moon, Sun, UserCircle, LogOut, Settings, Check, X, Camera, Upload, Loader2, Sparkles, Gift, ExternalLink, FileText, Mail, Keyboard, Music, Palette, Key, AlertTriangle, Lock, CheckCircle, Star, Heart, Copy, Coffee, Ticket, Trees, ShoppingBag, Feather, Flame, Brush, RefreshCcw } from 'lucide-react';
 import { UserProfile } from '../types';
 import { OtterChat } from './OtterChat';
 import { ThemeType } from '../App';
@@ -23,6 +23,8 @@ interface LayoutProps {
   onCloseSwiftGift?: () => void;
   showTTPDGift?: boolean;
   onCloseTTPDGift?: () => void;
+  showTetGift?: boolean;
+  onCloseTetGift?: () => void;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
@@ -38,7 +40,9 @@ export const Layout: React.FC<LayoutProps> = ({
   showSwiftGift = false,
   onCloseSwiftGift,
   showTTPDGift = false,
-  onCloseTTPDGift
+  onCloseTTPDGift,
+  showTetGift = false,
+  onCloseTetGift
 }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   
@@ -62,6 +66,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentModal1989, setShowPaymentModal1989] = useState(false);
   const [showPaymentModalFolklore, setShowPaymentModalFolklore] = useState(false);
+  const [showPaymentModalTet2026, setShowPaymentModalTet2026] = useState(false);
 
   // Donate Modal State
   const [showDonateModal, setShowDonateModal] = useState(false);
@@ -124,11 +129,12 @@ export const Layout: React.FC<LayoutProps> = ({
       setTimeout(() => setCopiedAccount(false), 2000);
   };
 
-  const handleOpenPaymentFromStore = (type: 'showgirl' | '1989' | 'folklore') => {
+  const handleOpenPaymentFromStore = (type: 'showgirl' | '1989' | 'folklore' | 'tet2026') => {
       setIsStoreOpen(false);
       if (type === 'showgirl') setShowPaymentModal(true);
       if (type === '1989') setShowPaymentModal1989(true);
       if (type === 'folklore') setShowPaymentModalFolklore(true);
+      if (type === 'tet2026') setShowPaymentModalTet2026(true);
   };
 
   const handleThemeChange = (newTheme: ThemeType) => {
@@ -164,6 +170,8 @@ export const Layout: React.FC<LayoutProps> = ({
           setIsThemeDropdownOpen(false);
           return;
       }
+
+      // TET 2026 IS FREE NOW - NO LOCK CHECK
       
       // 1. Start Entrance Animation
       setPendingTheme(newTheme);
@@ -192,6 +200,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const themeOptions: {id: ThemeType, name: string, icon: string, color: string, bg: string}[] = [
       { id: 'default', name: 'Otter', icon: '🦦', color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-900/20' },
       { id: 'xmas', name: 'Noel', icon: '🎄', color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
+      { id: 'tet2026', name: 'Dọn nhà', icon: '🧹', color: 'text-red-700', bg: 'bg-yellow-50 dark:bg-yellow-900/20' },
       { id: 'swift', name: 'Eras VIP', icon: '🐍', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-900/20' },
       { id: 'blackpink', name: 'Blink', icon: '🖤', color: 'text-pink-500', bg: 'bg-slate-900' },
       { id: 'aespa', name: 'MY', icon: '👽', color: 'text-indigo-400', bg: 'bg-slate-900' },
@@ -257,6 +266,8 @@ export const Layout: React.FC<LayoutProps> = ({
     const evermoreIcons = ['🍂', '🧥', '🕯️', '🌲', '🧡', '🪵', '🥂'];
     // TTPD Icons
     const ttpdIcons = ['🖋️', '📜', '🤍', '🎼', '🏛️', '🪜', '🥀'];
+    // Tet 2026 Icons
+    const tetIcons = ['🧹', '🪣', '🌼', '🌸', '🧧', '🐎', '🍉', '🎍'];
 
     let icons = xmasIcons;
     if (theme === 'swift') icons = swiftIcons;
@@ -269,6 +280,7 @@ export const Layout: React.FC<LayoutProps> = ({
     if (theme === 'folklore') icons = folkloreIcons;
     if (theme === 'evermore') icons = evermoreIcons;
     if (theme === 'ttpd') icons = ttpdIcons;
+    if (theme === 'tet2026') icons = tetIcons;
     
     const createItem = () => {
        if (container.childElementCount > 25) return;
@@ -307,6 +319,10 @@ export const Layout: React.FC<LayoutProps> = ({
            item.style.setProperty('--sway', `${sway * 0.8}px`);
            item.style.opacity = '0.6';
            item.style.filter = 'sepia(0.8)'; // Sepia tone
+       } else if (theme === 'tet2026') {
+           // Tet 2026: Energetic fall
+           item.style.animation = `xmas-fall ${duration * 0.8}s linear forwards`;
+           item.style.setProperty('--sway', `${sway * 1.2}px`);
        } else {
            item.style.animation = `xmas-fall ${duration}s linear forwards`;
            item.style.setProperty('--sway', `${sway}px`);
@@ -334,6 +350,8 @@ export const Layout: React.FC<LayoutProps> = ({
            item.style.filter = 'grayscale(100%) contrast(1.2) drop-shadow(0 2px 4px rgba(0,0,0,0.2))'; // Silver/Grayscale
        } else if (theme === 'evermore') {
            item.style.filter = 'contrast(1.1) saturate(1.2) drop-shadow(0 2px 4px rgba(194,65,12,0.2))'; // Rust glow
+       } else if (theme === 'tet2026') {
+           item.style.filter = 'drop-shadow(0 2px 4px rgba(220,38,38,0.3))'; // Red shadow
        } else {
            item.style.textShadow = '0 0 5px rgba(255,255,255,0.5), 0 0 2px rgba(0,0,0,0.1)';
        }
@@ -538,6 +556,15 @@ export const Layout: React.FC<LayoutProps> = ({
                   nameColor: 'text-orange-900 dark:text-orange-100 font-serif italic',
                   badgeBg: 'bg-gradient-to-r from-orange-700 to-amber-800 text-white font-serif italic shadow-md'
               };
+          case 'tet2026':
+              return {
+                  color: 'rgba(220, 38, 38, 0.9)', // Red
+                  gradient: 'from-red-600 via-yellow-500 to-red-700 shadow-[0_0_50px_rgba(234,179,8,0.4)] border-b border-yellow-500/30',
+                  icon: '🧹',
+                  subIcon: '🐎',
+                  nameColor: 'text-yellow-500 dark:text-yellow-400 font-bold drop-shadow-sm',
+                  badgeBg: 'bg-gradient-to-r from-red-600 to-yellow-500 text-white font-bold border border-yellow-300 shadow-md'
+              };
           default:
               return {
                   color: 'rgba(245, 158, 11, 0.6)',
@@ -668,6 +695,17 @@ export const Layout: React.FC<LayoutProps> = ({
               apiKeyBtn: 'bg-orange-50 text-orange-800 border-orange-300 hover:bg-orange-100 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700 dark:hover:bg-orange-900/50 font-serif',
               logoutBtn: 'text-orange-700 hover:text-red-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-red-400 dark:hover:bg-orange-900/20 font-serif'
           };
+          case 'tet2026': return {
+              // Tet 2026 Vibe (Red/Gold)
+              trigger: 'bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-100 border-red-200 dark:border-red-800',
+              avatar: 'bg-yellow-100 dark:bg-yellow-800 text-red-600 dark:text-red-200 border-yellow-200 dark:border-yellow-700 ring-2 ring-red-200 dark:ring-red-900',
+              label: 'text-yellow-600 dark:text-yellow-400',
+              name: 'text-red-700 dark:text-red-100',
+              id: 'text-red-500 dark:text-red-400',
+              editBtn: 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20',
+              apiKeyBtn: 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800 dark:hover:bg-yellow-900/30',
+              logoutBtn: 'text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+          };
           default: return {
               // Blue/Slate Default
               trigger: 'bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700',
@@ -697,14 +735,12 @@ export const Layout: React.FC<LayoutProps> = ({
       if (theme === 'folklore') return { text: "I'm doing good, I'm on some new shit", icon: '🌲', img: null, bg: 'bg-gradient-to-br from-gray-200 to-slate-300', border: 'border-slate-500 text-slate-600' };
       if (theme === 'ttpd') return { text: "I love you, it's ruining my life", icon: '🖋️', img: null, bg: 'bg-[#f5f5f4]', border: 'border-stone-500 text-stone-700' };
       if (theme === 'evermore') return { text: "Long story short, I survived", icon: '🍂', img: null, bg: 'bg-amber-50', border: 'border-orange-700 text-orange-800' };
+      if (theme === 'tet2026') return { text: "Năm Mới Bình An", icon: '🧧', img: null, bg: 'bg-red-100', border: 'border-yellow-500 text-red-600' };
       return null;
   };
   const egg = getEasterEggContent();
 
   // VietQR Link Generation
-  // Bank: MB (Military Bank)
-  // Account: 0766377925
-  // Name: LAM CHAN DAT
   const qrAmount = 50000;
   const qrContentShowgirl = `${user.studentId} MUA GIAO DIEN SHOWGIRL`;
   const qrUrlShowgirl = `https://img.vietqr.io/image/MB-0766377925-compact.png?amount=${qrAmount}&addInfo=${encodeURIComponent(qrContentShowgirl)}&accountName=LAM%20CHAN%20DAT`;
@@ -714,6 +750,9 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const qrContentFolklore = `${user.studentId} MUA GIAO DIEN FOLKLORE`;
   const qrUrlFolklore = `https://img.vietqr.io/image/MB-0766377925-compact.png?amount=${qrAmount}&addInfo=${encodeURIComponent(qrContentFolklore)}&accountName=LAM%20CHAN%20DAT`;
+
+  const qrContentTet2026 = `${user.studentId} MUA GIAO DIEN TET 2026`;
+  const qrUrlTet2026 = `https://img.vietqr.io/image/MB-0766377925-compact.png?amount=${qrAmount}&addInfo=${encodeURIComponent(qrContentTet2026)}&accountName=LAM%20CHAN%20DAT`;
 
   // General Donate QR (No specific amount/content forced)
   const donateQrUrl = `https://img.vietqr.io/image/MB-0766377925-compact.png?accountName=LAM%20CHAN%20DAT`;
@@ -726,6 +765,7 @@ export const Layout: React.FC<LayoutProps> = ({
         ${theme === 'folklore' ? 'bg-zinc-100 dark:bg-zinc-900' : ''}
         ${theme === 'ttpd' ? 'bg-[#f5f5f4] dark:bg-[#1c1917]' : ''}
         ${theme === 'evermore' ? 'bg-[#fffbeb] dark:bg-[#271c19]' : ''}
+        ${theme === 'tet2026' ? 'bg-red-50 dark:bg-red-950' : ''}
     `}>
       
       {/* THEME SPECIFIC BACKGROUND FX */}
@@ -736,6 +776,15 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="absolute inset-0 stage-curtain mix-blend-overlay"></div>
             <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-teal-900/20 to-transparent"></div>
         </div>
+      )}
+
+      {/* TET 2026 ATMOSPHERE */}
+      {theme === 'tet2026' && (
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+              {/* Subtle Pattern */}
+              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/flowers.png')] opacity-10"></div>
+              <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-red-500/10 to-transparent"></div>
+          </div>
       )}
 
       {/* TTPD ATMOSPHERE */}
@@ -886,7 +935,7 @@ export const Layout: React.FC<LayoutProps> = ({
                           animationDelay: `${Math.random() * 10}s`
                       }}
                   >
-                      {Math.random() > 0.5 ? '🍃' : '✨'}
+                      {Math.random() > 0.5 ? '🍂' : '✨'}
                   </div>
               ))}
               
@@ -958,6 +1007,45 @@ export const Layout: React.FC<LayoutProps> = ({
                       >
                           Enter The Department
                       </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* TET 2026 GIFT MODAL (DON NHA) */}
+      {showTetGift && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-red-900/80 backdrop-blur-md animate-in fade-in duration-700">
+              <div className="relative max-w-sm w-full mx-4 animate-in zoom-in-95 duration-500">
+                  <div className="bg-red-50 dark:bg-red-950 rounded-3xl p-8 shadow-2xl border-4 border-yellow-500 relative overflow-hidden text-center">
+                      {/* Decorative Elements */}
+                      <div className="absolute top-0 left-0 w-20 h-20 bg-yellow-400 rounded-full blur-3xl opacity-50 -translate-x-1/2 -translate-y-1/2"></div>
+                      <div className="absolute bottom-0 right-0 w-20 h-20 bg-red-500 rounded-full blur-3xl opacity-50 translate-x-1/2 translate-y-1/2"></div>
+                      
+                      <div className="relative z-10">
+                          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-red-500 to-yellow-500 rounded-full flex items-center justify-center shadow-lg border-4 border-white mb-4 animate-[bounce_2s_infinite]">
+                              <span className="text-5xl">🧹</span>
+                          </div>
+                          <h2 className="text-3xl font-black text-red-700 dark:text-yellow-400 mb-2 uppercase drop-shadow-sm">
+                              Dọn Nhà Đón Tết
+                          </h2>
+                          <p className="text-red-600 dark:text-red-200 font-bold mb-4 text-sm uppercase tracking-wide">
+                              Xuân Bính Ngọ 2026
+                          </p>
+                          
+                          <div className="bg-white/80 dark:bg-red-900/50 p-4 rounded-xl border border-red-100 dark:border-red-800 mb-6 backdrop-blur-sm">
+                              <p className="text-sm text-red-800 dark:text-red-100 leading-relaxed italic">
+                                  "Rái cá tặng bạn giao diện Tết Bính Ngọ 2026 để lấy hên đầu năm! Hãy cùng dọn dẹp kiến thức cũ, đón kiến thức mới nhé!" 🦦🧧
+                              </p>
+                          </div>
+
+                          <button
+                              onClick={onCloseTetGift}
+                              className="w-full py-4 rounded-xl bg-gradient-to-r from-red-600 to-yellow-500 hover:from-red-500 hover:to-yellow-400 text-white font-bold text-lg shadow-lg shadow-red-500/30 transition-transform active:scale-95 flex items-center justify-center gap-2"
+                          >
+                              <span>Nhận Lì Xì & Dọn Nhà</span>
+                              <Sparkles className="w-5 h-5 animate-spin-slow" />
+                          </button>
+                      </div>
                   </div>
               </div>
           </div>
@@ -1038,6 +1126,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 theme === 'folklore' ? 'border-zinc-400 shadow-[0_0_40px_rgba(161,161,170,0.4)]' :
                 theme === 'ttpd' ? 'border-stone-400 shadow-[0_0_40px_rgba(168,162,158,0.4)]' :
                 theme === 'evermore' ? 'border-orange-700 shadow-[0_0_40px_rgba(194,65,12,0.4)]' :
+                theme === 'tet2026' ? 'border-red-600 shadow-[0_0_40px_rgba(234,179,8,0.4)]' :
                 'border-slate-200 dark:border-slate-700'
             }`}>
                 {/* Background Gradients based on Theme */}
@@ -1047,11 +1136,11 @@ export const Layout: React.FC<LayoutProps> = ({
                     {/* Animated Icon */}
                     <div className={`w-16 h-16 mx-auto mb-3 rounded-full flex items-center justify-center shadow-xl border-4 border-white dark:border-slate-800 bg-gradient-to-br ${styles.gradient}`}>
                         <span className="text-3xl animate-[bounce_2s_infinite] filter drop-shadow-md">
-                            {theme === 'xmas' ? '🎅' : theme === 'showgirl' ? '💃' : theme === 'swift' ? '🐍' : theme === '1989' ? '🕊️' : theme === 'folklore' ? '🌲' : theme === 'ttpd' ? '🖋️' : theme === 'evermore' ? '🍂' : '🦦'}
+                            {theme === 'xmas' ? '🎅' : theme === 'showgirl' ? '💃' : theme === 'swift' ? '🐍' : theme === '1989' ? '🕊️' : theme === 'folklore' ? '🌲' : theme === 'ttpd' ? '🖋️' : theme === 'evermore' ? '🍂' : theme === 'tet2026' ? '🧧' : '🦦'}
                         </span>
                     </div>
 
-                    <h2 className={`text-2xl font-black mb-2 tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400' : theme === '1989' ? 'text-sky-500' : theme === 'folklore' ? 'text-slate-600 dark:text-zinc-300 font-serif' : theme === 'ttpd' ? 'text-stone-700 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-800 dark:text-orange-100 font-serif' : 'text-slate-800 dark:text-white'}`}>
+                    <h2 className={`text-2xl font-black mb-2 tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400' : theme === '1989' ? 'text-sky-500' : theme === 'folklore' ? 'text-slate-600 dark:text-zinc-300 font-serif' : theme === 'ttpd' ? 'text-stone-700 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-800 dark:text-orange-100 font-serif' : theme === 'tet2026' ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-white'}`}>
                         Tiếp sức Rái Cá
                     </h2>
 
@@ -1289,6 +1378,66 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
       )}
 
+      {/* PAYMENT MODAL FOR TET 2026 */}
+      {showPaymentModalTet2026 && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-md animate-in fade-in duration-300">
+              <div className="bg-white dark:bg-red-950 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-red-200 dark:border-red-800 animate-in zoom-in-95 relative overflow-hidden">
+                  {/* Background Decoration */}
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-600 via-yellow-500 to-red-600"></div>
+                  
+                  <div className="text-center mb-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white dark:border-red-800 shadow-lg">
+                          <span className="text-4xl animate-bounce">🐎</span>
+                      </div>
+                      <h2 className="text-2xl font-black text-red-700 dark:text-yellow-400 mb-2">
+                          Dọn Nhà Đón Tết
+                      </h2>
+                      <p className="text-slate-500 dark:text-red-200 text-sm">
+                          Mở khóa giao diện Tết Bính Ngọ 2026 rực rỡ sắc xuân!
+                      </p>
+                  </div>
+
+                  <div className="bg-red-50 dark:bg-red-900/30 p-4 rounded-2xl border border-red-100 dark:border-red-800 mb-6 flex flex-col items-center">
+                       <div className="bg-white p-2 rounded-xl shadow-sm mb-4 border border-red-100">
+                           <img 
+                                src={qrUrlTet2026} 
+                                alt="VietQR Payment" 
+                                className="w-48 h-48 object-contain"
+                           />
+                       </div>
+                       <div className="text-center space-y-2 w-full">
+                           <p className="text-xs font-bold text-red-400 uppercase tracking-wide">Hướng dẫn thanh toán</p>
+                           <div className="text-sm text-slate-700 dark:text-slate-300 bg-white dark:bg-red-900 p-3 rounded-lg border border-dashed border-red-300 dark:border-red-700">
+                               <p>Chuyển khoản: <strong className="text-red-600 dark:text-yellow-400">50.000đ</strong></p>
+                               <p>Nội dung: <strong className="font-mono bg-red-100 dark:bg-red-800 px-1 rounded">{user.studentId} - MUA GIAO DIEN TET 2026</strong></p>
+                           </div>
+                           <p className="text-xs text-slate-500 dark:text-red-300 italic mt-2">
+                               Sau khi chuyển khoản, vui lòng chụp màn hình và gửi Zalo cho Admin để được duyệt.
+                           </p>
+                       </div>
+                  </div>
+
+                  <div className="space-y-3">
+                      <button 
+                          onClick={() => {
+                              setShowPaymentModalTet2026(false);
+                              alert("Vui lòng chờ Admin duyệt trong giây lát. Bạn có thể liên hệ qua Zalo để được hỗ trợ nhanh hơn.");
+                          }}
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 to-yellow-500 text-white font-bold shadow-lg hover:shadow-red-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      >
+                          <CheckCircle className="w-5 h-5" /> Tôi đã chuyển khoản
+                      </button>
+                      <button 
+                          onClick={() => setShowPaymentModalTet2026(false)}
+                          className="w-full py-3 rounded-xl text-slate-500 dark:text-red-300 font-bold hover:bg-slate-100 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                          Đóng
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* API KEY MODAL */}
       {showApiKeyModal && (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
@@ -1416,6 +1565,10 @@ export const Layout: React.FC<LayoutProps> = ({
                      <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-orange-800 bg-gradient-to-b from-orange-900 to-amber-950`}>
                          <div className="text-[8rem] animate-[wiggle_3s_infinite]">🧥</div>
                      </div>
+                ) : theme === 'tet2026' ? (
+                     <div className={`w-full h-64 flex items-end justify-center drop-shadow-2xl rounded-t-full border-8 border-yellow-500 bg-gradient-to-b from-red-600 to-red-900`}>
+                         <div className="text-[8rem] animate-[wiggle_3s_infinite]">🐎</div>
+                     </div>
                 ) : (
                     <img 
                         src={egg.img!}
@@ -1431,8 +1584,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       )}
 
-      {/* ... Xmas Popup (Only show if not Swift/TTPD/Evermore Gift) ... */}
-      {theme === 'xmas' && showXmasPopup && !showSwiftGift && !showTTPDGift && (
+      {/* ... Xmas Popup (Only show if not Swift/TTPD/Evermore/Tet Gift) ... */}
+      {theme === 'xmas' && showXmasPopup && !showSwiftGift && !showTTPDGift && !showTetGift && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-500">
             <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(220,38,38,0.5)] overflow-hidden relative animate-in zoom-in-50 slide-in-from-bottom-[20%] duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] group transition-all">
                 <div className={`absolute top-0 inset-x-0 h-36 bg-gradient-to-b ${giftOpened ? 'from-amber-400 via-amber-500' : 'from-red-600 via-red-500'} to-transparent z-0 transition-colors duration-700`}></div>
@@ -1531,7 +1684,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {isOtterMode && (
         <div 
             className={`fixed inset-0 z-[200] flex flex-col items-center justify-center animate-in zoom-in duration-300 cursor-pointer
-                ${theme === 'showgirl' ? 'bg-slate-900/95' : theme === '1989' ? 'bg-sky-50/95' : theme === 'folklore' ? 'bg-zinc-100/95 dark:bg-zinc-900/95' : theme === 'ttpd' ? 'bg-[#f5f5f4]/95 dark:bg-[#1c1917]/95' : theme === 'evermore' ? 'bg-[#fffbeb]/95 dark:bg-[#271c19]/95' : 'bg-slate-900/90 backdrop-blur-xl'}
+                ${theme === 'showgirl' ? 'bg-slate-900/95' : theme === '1989' ? 'bg-sky-50/95' : theme === 'folklore' ? 'bg-zinc-100/95 dark:bg-zinc-900/95' : theme === 'ttpd' ? 'bg-[#f5f5f4]/95 dark:bg-[#1c1917]/95' : theme === 'evermore' ? 'bg-[#fffbeb]/95 dark:bg-[#271c19]/95' : theme === 'tet2026' ? 'bg-red-600/95' : 'bg-slate-900/90 backdrop-blur-xl'}
             `}
             onClick={() => setIsOtterMode(false)}
         >
@@ -1657,6 +1810,25 @@ export const Layout: React.FC<LayoutProps> = ({
                  </div>
             )}
 
+            {/* TET 2026 FOCUS MODE */}
+            {theme === 'tet2026' && (
+                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/flowers.png')] opacity-20"></div>
+                     {[...Array(8)].map((_, i) => (
+                        <div 
+                            key={i}
+                            className="absolute animate-[bounce_3s_infinite] text-yellow-400/30"
+                            style={{
+                                top: `${Math.random() * 100}%`,
+                                left: `${Math.random() * 100}%`,
+                                fontSize: `${2 + Math.random()}rem`,
+                                animationDuration: `${5 + Math.random() * 5}s`,
+                            }}
+                        >🧧</div>
+                    ))}
+                 </div>
+            )}
+
             <div className={`relative transform transition-transform hover:scale-110 duration-300 ${theme === 'showgirl' ? 'animate-[bounce_3s_infinite]' : 'animate-bounce'}`}>
                 <div className={`w-40 h-40 rounded-[2rem] flex items-center justify-center shadow-2xl border-4 relative 
                     ${theme === 'showgirl' 
@@ -1671,6 +1843,8 @@ export const Layout: React.FC<LayoutProps> = ({
                             ? 'bg-[#f5f5f4] border-stone-400 shadow-[0_0_60px_rgba(168,162,158,0.5)]'
                         : theme === 'evermore'
                             ? 'bg-[#fffbeb] border-orange-900 shadow-[0_0_60px_rgba(194,65,12,0.5)]'
+                        : theme === 'tet2026'
+                            ? 'bg-gradient-to-br from-red-600 to-yellow-500 border-yellow-300 shadow-[0_0_60px_rgba(234,179,8,0.6)]'
                         : `bg-gradient-to-br ${styles.gradient} border-white/20`
                     }`}
                 >
@@ -1684,13 +1858,13 @@ export const Layout: React.FC<LayoutProps> = ({
                     )}
                 </div>
                 {/* Glow effect */}
-                <div className={`absolute inset-0 blur-3xl -z-10 opacity-50 ${theme === 'showgirl' ? 'bg-yellow-500' : theme === 'swift' ? 'bg-purple-500' : theme === '1989' ? 'bg-sky-400' : theme === 'folklore' ? 'bg-white' : theme === 'ttpd' ? 'bg-stone-300' : theme === 'evermore' ? 'bg-orange-700' : 'bg-white'}`}></div>
+                <div className={`absolute inset-0 blur-3xl -z-10 opacity-50 ${theme === 'showgirl' ? 'bg-yellow-500' : theme === 'swift' ? 'bg-purple-500' : theme === '1989' ? 'bg-sky-400' : theme === 'folklore' ? 'bg-white' : theme === 'ttpd' ? 'bg-stone-300' : theme === 'evermore' ? 'bg-orange-700' : theme === 'tet2026' ? 'bg-yellow-500' : 'bg-white'}`}></div>
             </div>
             
-            <h1 className={`mt-8 text-5xl font-black text-center tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : theme === '1989' ? 'text-sky-500' : theme === 'folklore' ? 'text-slate-600 dark:text-zinc-300 font-serif italic' : theme === 'ttpd' ? 'text-stone-700 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-900 dark:text-orange-100 font-serif italic' : 'text-white drop-shadow-lg'}`}>
+            <h1 className={`mt-8 text-5xl font-black text-center tracking-tight ${theme === 'showgirl' ? 'text-gradient-gold text-glow-gold' : theme === 'swift' ? 'text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 drop-shadow-[0_0_10px_rgba(168,85,247,0.8)]' : theme === '1989' ? 'text-sky-500' : theme === 'folklore' ? 'text-slate-600 dark:text-zinc-300 font-serif italic' : theme === 'ttpd' ? 'text-stone-700 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-900 dark:text-orange-100 font-serif italic' : theme === 'tet2026' ? 'text-yellow-300 drop-shadow-md' : 'text-white drop-shadow-lg'}`}>
                 AnatomyOtter
             </h1>
-            <p className={`mt-2 font-mono text-lg tracking-widest uppercase ${theme === 'showgirl' ? 'text-yellow-400/80 text-glow-gold' : theme === '1989' ? 'text-slate-500' : theme === 'folklore' ? 'text-slate-500 font-serif lowercase' : theme === 'ttpd' ? 'text-stone-500 font-serif lowercase' : theme === 'evermore' ? 'text-orange-800 dark:text-orange-200 font-serif lowercase' : 'text-white/60'}`}>
+            <p className={`mt-2 font-mono text-lg tracking-widest uppercase ${theme === 'showgirl' ? 'text-yellow-400/80 text-glow-gold' : theme === '1989' ? 'text-slate-500' : theme === 'folklore' ? 'text-slate-500 font-serif lowercase' : theme === 'ttpd' ? 'text-stone-500 font-serif lowercase' : theme === 'evermore' ? 'text-orange-800 dark:text-orange-200 font-serif lowercase' : theme === 'tet2026' ? 'text-red-100 font-bold' : 'text-white/60'}`}>
                 {theme === 'xmas' ? "Jingle Bells Edition" :
                  theme === 'swift' ? "The Eras Tour VIP" :
                  theme === 'blackpink' ? "BLACKPINK IN YOUR AREA" :
@@ -1702,6 +1876,7 @@ export const Layout: React.FC<LayoutProps> = ({
                  theme === 'folklore' ? "passed down like folk songs" :
                  theme === 'ttpd' ? "the tortured poets department" :
                  theme === 'evermore' ? "life was a willow" :
+                 theme === 'tet2026' ? "CHÚC MỪNG NĂM MỚI 2026" :
                  "STUDY WITH OTTER"}
             </p>
             {theme === 'showgirl' && <p className="text-yellow-400/80 text-sm font-bold mt-1 animate-pulse">✨ VIP ACCESS ✨</p>}
@@ -1709,27 +1884,28 @@ export const Layout: React.FC<LayoutProps> = ({
             {theme === 'folklore' && <p className="text-slate-500 text-sm font-bold mt-1 animate-pulse font-serif italic">🌲 VIP ACCESS 🌲</p>}
             {theme === 'ttpd' && <p className="text-stone-500 text-sm font-bold mt-1 animate-pulse font-serif italic">🖋️ THE CHAIRMAN 🖋️</p>}
             {theme === 'evermore' && <p className="text-orange-700 text-sm font-bold mt-1 animate-pulse font-serif italic">🍂 SURVIVOR 🍂</p>}
+            {theme === 'tet2026' && <p className="text-yellow-300 text-sm font-bold mt-1 animate-pulse">🧧 VIP ACCESS 🧧</p>}
             
             <p className="absolute bottom-10 text-white/40 text-sm">Chạm bất kỳ đâu để đóng</p>
         </div>
       )}
       
       {/* HEADER */}
-      <header className={`${theme === 'showgirl' ? 'bg-slate-900/80 backdrop-blur-md border-orange-900/30' : theme === 'swift' ? 'bg-[#1a1a2e]/80 backdrop-blur-md border-purple-500/20' : theme === '1989' ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-sky-200 dark:border-sky-800' : theme === 'folklore' ? 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-zinc-200 dark:border-zinc-800' : theme === 'ttpd' ? 'bg-[#f5f5f4]/90 dark:bg-[#1c1917]/90 backdrop-blur-md border-stone-300 dark:border-stone-800' : theme === 'evermore' ? 'bg-[#fffbeb]/90 dark:bg-[#271c19]/90 backdrop-blur-md border-orange-900/20 dark:border-orange-900/50' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} border-b sticky top-0 z-40 transition-all duration-300`}>
+      <header className={`${theme === 'showgirl' ? 'bg-slate-900/80 backdrop-blur-md border-orange-900/30' : theme === 'swift' ? 'bg-[#1a1a2e]/80 backdrop-blur-md border-purple-500/20' : theme === '1989' ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-sky-200 dark:border-sky-800' : theme === 'folklore' ? 'bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-zinc-200 dark:border-zinc-800' : theme === 'ttpd' ? 'bg-[#f5f5f4]/90 dark:bg-[#1c1917]/90 backdrop-blur-md border-stone-300 dark:border-stone-800' : theme === 'evermore' ? 'bg-[#fffbeb]/90 dark:bg-[#271c19]/90 backdrop-blur-md border-orange-900/20 dark:border-orange-900/50' : theme === 'tet2026' ? 'bg-red-50/90 dark:bg-red-950/90 backdrop-blur-md border-yellow-500/30' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} border-b sticky top-0 z-40 transition-all duration-300`}>
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div 
             className="flex items-center space-x-2 group cursor-pointer select-none transition-transform active:scale-95"
             onClick={() => setIsOtterMode(true)}
           >
             <div 
-                className={`w-10 h-10 bg-gradient-to-br ${styles.gradient} rounded-xl flex items-center justify-center liquid-icon relative z-10 ${theme === 'showgirl' ? 'border border-yellow-500/50 shadow-glow-gold' : ''}`}
+                className={`w-10 h-10 bg-gradient-to-br ${styles.gradient} rounded-xl flex items-center justify-center liquid-icon relative z-10 ${theme === 'showgirl' ? 'border border-yellow-500/50 shadow-glow-gold' : theme === 'tet2026' ? 'border border-yellow-400 shadow-lg' : ''}`}
                 style={{ '--glow-color': styles.color } as React.CSSProperties}
             >
                 <span className="text-2xl leading-none">{styles.icon}</span>
                 {styles.subIcon && <span className="absolute -top-2 -right-1 text-base rotate-12 drop-shadow-sm">{styles.subIcon}</span>}
             </div>
             <div className="flex flex-col md:flex-row md:items-baseline gap-0 md:gap-2">
-                <h1 className={`text-xl font-bold tracking-tight transition-colors leading-none flex items-center gap-2 ${theme === 'showgirl' ? 'text-gradient-gold' : theme === '1989' ? 'text-sky-600 dark:text-sky-300' : theme === 'folklore' ? 'text-slate-700 dark:text-zinc-200 font-serif italic' : theme === 'ttpd' ? 'text-stone-800 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-900 dark:text-orange-100 font-serif' : 'text-slate-800 dark:text-white'}`}>
+                <h1 className={`text-xl font-bold tracking-tight transition-colors leading-none flex items-center gap-2 ${theme === 'showgirl' ? 'text-gradient-gold' : theme === '1989' ? 'text-sky-600 dark:text-sky-300' : theme === 'folklore' ? 'text-slate-700 dark:text-zinc-200 font-serif italic' : theme === 'ttpd' ? 'text-stone-800 dark:text-stone-200 font-serif' : theme === 'evermore' ? 'text-orange-900 dark:text-orange-100 font-serif' : theme === 'tet2026' ? 'text-red-700 dark:text-red-200' : 'text-slate-800 dark:text-white'}`}>
                     <span>Anatomy<span className={`text-glow ${styles.nameColor}`}>Otter</span></span>
                     
                     {/* THEME EDITION TAG */}
@@ -1749,6 +1925,7 @@ export const Layout: React.FC<LayoutProps> = ({
                              : theme === 'folklore' ? "folklore"
                              : theme === 'ttpd' ? "TTPD"
                              : theme === 'evermore' ? "evermore"
+                             : theme === 'tet2026' ? "Tết Bính Ngọ"
                              : ""}
                         </span>
                     )}
@@ -1757,7 +1934,7 @@ export const Layout: React.FC<LayoutProps> = ({
                         className="text-xs font-mono text-slate-400 ml-0.5"
                         style={theme === 'showgirl' ? { WebkitTextFillColor: '#94a3b8' } : undefined}
                     >
-                        v1.0
+                        v1.1
                     </span>
                 </h1>
             </div>
@@ -1777,7 +1954,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {/* Pomodoro Timer */}
             <PomodoroTimer theme={theme} />
 
-            {/* NEW: Theme Store Trigger */}
+            {/* Theme Store Trigger */}
             <button 
                 onClick={() => setIsStoreOpen(true)}
                 className={`liquid-icon relative rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none transition-colors ${theme === 'showgirl' ? 'bg-slate-800 text-teal-400 border-teal-900/50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:text-emerald-600 dark:hover:text-emerald-400'}`}
@@ -1785,6 +1962,24 @@ export const Layout: React.FC<LayoutProps> = ({
                 title="Cửa hàng Theme"
             >
                 <ShoppingBag className="w-5 h-5" />
+            </button>
+
+            {/* Dark Mode Toggle Shortcut */}
+            <button 
+                onClick={() => {
+                    if (darkMode) {
+                        document.documentElement.classList.remove('dark');
+                        toggleDarkMode();
+                    } else {
+                        document.documentElement.classList.add('dark');
+                        toggleDarkMode();
+                    }
+                }}
+                className={`liquid-icon relative rounded-xl w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none transition-colors ${theme === 'showgirl' ? 'bg-slate-800 text-indigo-400 border-indigo-900/50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 hover:text-indigo-600 dark:hover:text-indigo-400'}`}
+                style={{ '--glow-color': darkMode ? 'rgba(253, 224, 71, 0.5)' : 'rgba(99, 102, 241, 0.5)' } as React.CSSProperties}
+                title={darkMode ? "Chế độ sáng" : "Chế độ tối"}
+            >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
             {/* Theme Switcher (Legacy Dropdown) */}
@@ -1809,229 +2004,217 @@ export const Layout: React.FC<LayoutProps> = ({
                                     const isFolklore = opt.id === 'folklore';
                                     const isTTPD = opt.id === 'ttpd';
                                     const isEvermore = opt.id === 'evermore';
-                                    const isSelected = theme === opt.id;
+                                    
+                                    // Removed Tet2026 check to unlock it for free
                                     const isLocked = (isShowgirl && !user.isVipShowgirl) || (is1989 && !user.isVip1989) || (isFolklore && !user.isVipFolklore) || (isTTPD && !user.isVipTTPD) || (isEvermore && !user.isVipEvermore);
+
+                                    const isSelected = theme === opt.id;
 
                                     return (
                                         <button
                                             key={opt.id}
                                             onClick={() => handleThemeChange(opt.id)}
-                                            className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200 relative overflow-hidden ${
-                                                isSelected
-                                                    ? `border-current ${opt.color} ${opt.bg} ring-1 ring-current/20` 
-                                                    : isShowgirl
-                                                        ? 'border-orange-400 dark:border-orange-500 bg-gradient-to-br from-orange-50 to-teal-50 dark:from-slate-800 dark:to-slate-800 text-orange-600 dark:text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.5)] ring-2 ring-orange-400/30 scale-[1.02]'
-                                                        : is1989
-                                                            ? 'border-sky-400 dark:border-sky-600 bg-gradient-to-br from-sky-50 to-blue-50 dark:from-slate-800 dark:to-slate-800 text-sky-600 dark:text-sky-400 shadow-[0_0_15px_rgba(56,189,248,0.5)] ring-2 ring-sky-400/30 scale-[1.02]'
-                                                        : isFolklore
-                                                            ? 'border-zinc-400 dark:border-zinc-600 bg-gradient-to-br from-zinc-100 to-slate-200 dark:from-zinc-800 dark:to-slate-800 text-slate-600 dark:text-zinc-300 shadow-[0_0_15px_rgba(161,161,170,0.5)] ring-2 ring-zinc-400/30 scale-[1.02]'
-                                                        : isTTPD
-                                                            ? 'border-stone-400 dark:border-stone-600 bg-gradient-to-br from-stone-100 to-neutral-200 dark:from-stone-800 dark:to-stone-950 text-stone-700 dark:text-stone-300 shadow-[0_0_15px_rgba(168,162,158,0.5)] ring-2 ring-stone-400/30 scale-[1.02]'
-                                                        : isEvermore
-                                                            ? 'border-orange-700 dark:border-orange-600 bg-gradient-to-br from-orange-50 to-amber-100 dark:from-amber-950 dark:to-orange-950 text-orange-800 dark:text-orange-200 shadow-[0_0_15px_rgba(194,65,12,0.5)] ring-2 ring-orange-700/30 scale-[1.02]'
-                                                        : isSwift
-                                                            ? 'border-purple-400 dark:border-purple-600 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950 dark:to-purple-950 text-purple-600 dark:text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                                                        : 'border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400'
-                                            } ${isLocked ? 'opacity-80 grayscale-[0.3]' : ''}`}
+                                            className={`relative p-2 rounded-xl flex flex-col items-center justify-center gap-1 border-2 transition-all duration-200 ${
+                                                isSelected 
+                                                    ? `border-current ${opt.color} bg-white dark:bg-slate-800 shadow-sm scale-[1.02]` 
+                                                    : `border-transparent hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:scale-[1.02]`
+                                            }`}
                                         >
-                                            {(isShowgirl || is1989 || isFolklore || isTTPD || isEvermore) && !isSelected && !isLocked && (
-                                                <div className={`absolute inset-0 bg-gradient-to-tr ${is1989 ? 'from-sky-400/20' : isFolklore ? 'from-zinc-400/20' : isTTPD ? 'from-stone-400/20' : isEvermore ? 'from-orange-700/20' : 'from-orange-400/20'} to-transparent opacity-50 pointer-events-none animate-pulse`}></div>
-                                            )}
-                                            {(isShowgirl || is1989 || isFolklore || isTTPD || isEvermore) && !isLocked && <span className="absolute top-0 right-0.5 text-xs animate-pulse">👑</span>}
-                                            
-                                            {/* LOCK OVERLAY */}
+                                            <div className={`text-2xl ${isLocked ? 'opacity-50 grayscale' : ''}`}>{opt.icon}</div>
+                                            <span className="text-[10px] font-bold truncate w-full text-center">{opt.name}</span>
                                             {isLocked && (
-                                                <div className="absolute inset-0 bg-black/10 dark:bg-black/40 flex items-center justify-center z-20 backdrop-blur-[1px]">
-                                                    <Lock className="w-6 h-6 text-white drop-shadow-md" />
+                                                <div className="absolute top-1 right-1 text-xs text-slate-400">
+                                                    <Lock className="w-3 h-3" />
                                                 </div>
                                             )}
-
-                                            <span className={`text-2xl mb-1 ${(isShowgirl || is1989 || isFolklore || isTTPD || isEvermore) && !isSelected && !isLocked ? 'animate-bounce' : ''}`}>{opt.icon}</span>
-                                            <span className="text-xs font-bold relative z-10">{opt.name}</span>
-                                            {(isShowgirl || is1989 || isFolklore || isTTPD || isEvermore) && !isSelected && !isLocked && <span className={`absolute top-2 right-2 w-1.5 h-1.5 ${is1989 ? 'bg-sky-500' : isFolklore ? 'bg-emerald-500' : isTTPD ? 'bg-stone-500' : isEvermore ? 'bg-orange-600' : 'bg-orange-500'} rounded-full animate-ping`}></span>}
-                                            {isSelected && <div className="w-1 h-1 rounded-full bg-current mt-1"></div>}
+                                            {isSelected && (
+                                                <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${opt.bg} flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-sm`}>
+                                                    <Check className="w-2.5 h-2.5" />
+                                                </div>
+                                            )}
                                         </button>
                                     );
                                 })}
                             </div>
-                        </div>
+                         </div>
+                         
+                         <div className="p-2 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 text-center">
+                             <button 
+                                onClick={() => { setIsThemeDropdownOpen(false); setIsStoreOpen(true); }}
+                                className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center justify-center gap-1"
+                             >
+                                 <ShoppingBag className="w-3 h-3" /> Xem cửa hàng
+                             </button>
+                         </div>
                     </div>
                 )}
             </div>
 
-            <button 
-              onClick={toggleDarkMode}
-              className="liquid-icon relative rounded-xl text-slate-500 dark:text-slate-400 w-10 h-10 flex items-center justify-center overflow-hidden focus:outline-none bg-slate-100 dark:bg-slate-800"
-              style={{ '--glow-color': darkMode ? 'rgba(99, 102, 241, 0.5)' : 'rgba(245, 158, 11, 0.5)' } as React.CSSProperties}
-            >
-               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${darkMode ? 'rotate-0 scale-100 opacity-100' : '-rotate-90 scale-0 opacity-0'}`}>
-                  <Sun className="w-5 h-5" />
-               </div>
-               <div className={`absolute transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] ${darkMode ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`}>
-                  <Moon className="w-5 h-5" />
-               </div>
-            </button>
-            
-            {/* Profile Section */}
+            {/* User Profile */}
             <div 
-                className="relative z-50"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
+              className="relative z-50"
+              onMouseEnter={handleMouseEnter} 
+              onMouseLeave={handleMouseLeave}
             >
-               {/* Unified Trigger Card */}
-               <div 
-                  className={`flex items-center gap-3 px-3 py-1.5 rounded-2xl liquid-icon cursor-pointer transition-all duration-300 border ${profileTheme.trigger}`}
-                  style={{ '--glow-color': theme === 'showgirl' ? 'rgba(234, 179, 8, 0.5)' : theme === '1989' ? 'rgba(56, 189, 248, 0.5)' : theme === 'folklore' ? 'rgba(161, 161, 170, 0.5)' : theme === 'ttpd' ? 'rgba(168, 162, 158, 0.5)' : theme === 'evermore' ? 'rgba(194, 65, 12, 0.5)' : 'rgba(245, 158, 11, 0.5)' } as React.CSSProperties}
-               >
-                  <div className="hidden md:block text-right">
-                      <p className="text-sm font-bold transition-colors">{user.fullName}</p>
-                      <p className={`text-xs transition-colors opacity-80 ${theme === 'showgirl' ? 'text-white' : ''}`}>{user.studentId}</p>
-                  </div>
-                  <div className="transition-colors relative">
-                      {user.avatar ? (
-                        <img 
-                          src={user.avatar} 
-                          alt="Profile" 
-                          className={`w-9 h-9 rounded-full object-cover border ${theme === 'showgirl' ? 'border-yellow-500 shadow-glow-gold' : theme === '1989' ? 'border-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.5)]' : theme === 'folklore' ? 'border-zinc-400 shadow-[0_0_10px_rgba(161,161,170,0.5)]' : theme === 'ttpd' ? 'border-stone-400 shadow-[0_0_10px_rgba(168,162,158,0.5)]' : theme === 'evermore' ? 'border-orange-700 shadow-[0_0_10px_rgba(194,65,12,0.5)]' : 'border-white/20'}`}
-                        />
-                      ) : (
-                        <UserCircle className="w-9 h-9" />
-                      )}
-                  </div>
-               </div>
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className={`flex items-center gap-2 px-1.5 py-1.5 md:px-3 md:py-2 rounded-full md:rounded-xl transition-all shadow-sm md:shadow-none group ${profileTheme.trigger}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center overflow-hidden relative ${profileTheme.avatar}`}>
+                  {user.avatar ? (
+                    <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <UserCircle className="w-5 h-5" />
+                  )}
+                  {theme === 'showgirl' && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-orange-500/30 to-transparent"></div>
+                  )}
+                </div>
+                <div className="hidden md:block text-left">
+                  <p className={`text-[10px] font-bold uppercase leading-none mb-0.5 ${profileTheme.label}`}>Sinh viên</p>
+                  <p className={`text-sm font-bold leading-none truncate max-w-[100px] ${profileTheme.name}`}>{user.fullName}</p>
+                </div>
+              </button>
 
-               {/* Dropdown Popup */}
-               <div 
-                  ref={dropdownRef}
-                  className={`absolute top-full right-0 mt-2 w-80 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 transform transition-all duration-300 origin-top-right overflow-hidden ${isProfileOpen ? 'opacity-100 translate-y-0 visible' : 'opacity-0 -translate-y-4 invisible'}`}
-               >
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center">
-                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${profileTheme.label}`}>Thông tin cá nhân</p>
-                    <span className="text-[10px] font-mono text-slate-400 flex items-center gap-1 bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                        <Keyboard className="w-3 h-3" /> Alt+U
-                    </span>
-                  </div>
-                  
-                  <div className="p-4">
-                    {isEditing ? (
-                         /* ... Edit Profile Form (unchanged) ... */
-                        <div className="space-y-3 animate-in fade-in slide-in-from-right-4 duration-200">
-                             {/* Avatar Upload in Edit Mode */}
-                             <div className="flex justify-center mb-4">
+              {/* Dropdown Menu */}
+              {isProfileOpen && (
+                <div 
+                    ref={dropdownRef}
+                    className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right"
+                >
+                  <div className="p-6 text-center border-b border-slate-100 dark:border-slate-800 relative">
+                    {/* Background decoration */}
+                    <div className={`absolute top-0 left-0 w-full h-20 bg-gradient-to-b ${styles.gradient} opacity-10`}></div>
+                    
+                    <div className="relative z-10">
+                        <div className="w-20 h-20 mx-auto rounded-full border-4 border-white dark:border-slate-800 shadow-lg overflow-hidden mb-3 relative group">
+                            {isEditing ? (
                                 <div 
-                                    className="relative group cursor-pointer"
+                                    className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer relative overflow-hidden"
                                     onClick={() => fileInputRef.current?.click()}
                                 >
-                                    <div className={`w-16 h-16 rounded-full overflow-hidden border-2 relative ${profileTheme.avatar.split(' ')[0].replace('bg-', 'border-')}`}>
-                                        {editAvatar ? (
-                                            <img src={editAvatar} alt="Edit" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                                                <UserCircle className="w-10 h-10 text-slate-400" />
-                                            </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Camera className="w-6 h-6 text-white" />
-                                        </div>
+                                    {editAvatar ? (
+                                        <img src={editAvatar} alt="Avatar" className="w-full h-full object-cover opacity-50" />
+                                    ) : (
+                                        <UserCircle className="w-10 h-10 text-slate-300" />
+                                    )}
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <Camera className="w-6 h-6 text-slate-500" />
                                     </div>
-                                    <input 
-                                        type="file" 
-                                        ref={fileInputRef} 
-                                        onChange={handleFileChange}
-                                        accept="image/*"
-                                        className="hidden"
-                                    />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Họ và tên</label>
+                            ) : (
+                                user.avatar ? (
+                                    <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className={`w-full h-full flex items-center justify-center ${profileTheme.avatar}`}>
+                                        <UserCircle className="w-10 h-10" />
+                                    </div>
+                                )
+                            )}
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleFileChange} 
+                                className="hidden" 
+                                accept="image/*" 
+                            />
+                        </div>
+
+                        {isEditing ? (
+                            <div className="space-y-2 animate-in fade-in">
                                 <input 
                                     value={editName} 
-                                    onChange={(e) => setEditName(e.target.value)}
-                                    className="w-full text-sm p-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                                    onChange={(e) => setEditName(e.target.value)} 
+                                    className="w-full text-center text-sm font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 focus:ring-2 focus:ring-blue-500 outline-none text-slate-900 dark:text-white"
+                                    placeholder="Họ tên"
                                 />
-                            </div>
-                            <div>
-                                <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Mã số sinh viên</label>
                                 <input 
                                     value={editId} 
-                                    onChange={(e) => setEditId(e.target.value)}
-                                    className="w-full text-sm p-2 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-500 outline-none"
+                                    onChange={(e) => setEditId(e.target.value)} 
+                                    className="w-full text-center text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1 focus:ring-2 focus:ring-blue-500 outline-none text-slate-600 dark:text-slate-300"
+                                    placeholder="MSSV"
                                 />
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                                <button onClick={handleSaveProfile} className="flex-1 bg-amber-500 text-white py-1.5 rounded-lg text-sm font-medium hover:bg-amber-600 flex items-center justify-center gap-1">
-                                    <Check className="w-4 h-4" /> Lưu
-                                </button>
-                                <button onClick={cancelEdit} className="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 py-1.5 rounded-lg text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center gap-1">
-                                    <X className="w-4 h-4" /> Hủy
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {/* User Info */}
-                            <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center overflow-hidden border ${profileTheme.avatar}`}>
-                                    {user.avatar ? <img src={user.avatar} alt="User" className="w-full h-full object-cover" /> : <UserCircle className="w-7 h-7" />}
-                                </div>
-                                <div>
-                                    <p className={`font-bold ${profileTheme.name}`}>{user.fullName}</p>
-                                    <p className={`text-sm ${profileTheme.id}`}>{user.studentId}</p>
+                                <div className="flex gap-2 justify-center mt-2">
+                                    <button onClick={cancelEdit} className="p-1 text-red-500 hover:bg-red-50 rounded"><X className="w-4 h-4" /></button>
+                                    <button onClick={handleSaveProfile} className="p-1 text-green-500 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
                                 </div>
                             </div>
-                            
-                            {/* Actions */}
-                            <button 
-                                onClick={() => { setIsEditing(true); setEditName(user.fullName); setEditId(user.studentId); setEditAvatar(user.avatar); }}
-                                className={`w-full py-2 border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${profileTheme.editBtn}`}
-                            >
-                                <Settings className="w-4 h-4" /> Chỉnh sửa thông tin
-                            </button>
-
-                            {/* API Key Config */}
-                            <button 
-                                onClick={() => setShowApiKeyModal(true)}
-                                className={`w-full py-2 border rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2 ${profileTheme.apiKeyBtn}`}
-                            >
-                                <Key className="w-4 h-4" /> Cấu hình API Key
-                            </button>
-                        </div>
-                    )}
+                        ) : (
+                            <>
+                                <h3 className={`text-lg font-bold truncate ${profileTheme.name}`}>{user.fullName}</h3>
+                                <p className={`text-xs font-mono mb-3 ${profileTheme.id}`}>{user.studentId}</p>
+                                <button 
+                                    onClick={() => setIsEditing(true)}
+                                    className={`text-xs font-bold px-3 py-1 rounded-full border transition-colors flex items-center gap-1 mx-auto ${profileTheme.editBtn}`}
+                                >
+                                    <Settings className="w-3 h-3" /> Chỉnh sửa
+                                </button>
+                            </>
+                        )}
+                    </div>
                   </div>
 
-                  <div className="p-2 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30">
+                  <div className="p-4 space-y-2 bg-slate-50/50 dark:bg-slate-800/30">
                     <button 
-                        onClick={onLogout}
-                        className={`w-full py-2 px-4 rounded-xl text-sm font-medium transition-colors flex items-center gap-2 ${profileTheme.logoutBtn}`}
+                        onClick={() => {
+                            setIsProfileOpen(false);
+                            setTimeout(() => setShowApiKeyModal(true), 200);
+                        }}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl text-sm font-bold transition-all ${profileTheme.apiKeyBtn}`}
                     >
-                        <LogOut className="w-4 h-4" /> Đăng xuất
+                        <Key className="w-4 h-4" />
+                        Cấu hình API Key
+                    </button>
+
+                    <button 
+                        onClick={() => {
+                            if (darkMode) {
+                                document.documentElement.classList.remove('dark');
+                                toggleDarkMode();
+                            } else {
+                                document.documentElement.classList.add('dark');
+                                toggleDarkMode();
+                            }
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors text-sm font-bold"
+                    >
+                        {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                        {darkMode ? "Chế độ sáng" : "Chế độ tối"}
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                          if (window.confirm("Bạn có chắc muốn đăng xuất?")) {
+                              onLogout();
+                          }
+                      }}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-sm font-bold ${profileTheme.logoutBtn}`}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Đăng xuất
                     </button>
                   </div>
-               </div>
+                  
+                  <div className="p-3 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-[10px] text-center text-slate-400 font-mono">
+                      ID: {user.uid?.substring(0, 8) || 'GUEST'}...
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </header>
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 relative z-10">
+
+      {/* Main Content */}
+      <main className="flex-1 relative z-10">
         {children}
       </main>
-      
-      <OtterChat theme={theme} />
 
-      {showFeedback && (
-          <a 
-              href="https://mail.google.com/mail/?view=cm&fs=1&to=datken100@gmail.com&su=[Góp ý] AnatomyOtter"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="fixed bottom-6 left-6 z-40 flex items-center gap-0 hover:gap-2 px-3 hover:px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full shadow-lg text-slate-500 dark:text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:border-amber-300 dark:hover:border-amber-700 transition-all duration-300 group hover:shadow-amber-500/20"
-          >
-              <Mail className="w-5 h-5" />
-              <span className="max-w-0 overflow-hidden group-hover:max-w-xs opacity-0 group-hover:opacity-100 transition-all duration-300 text-sm font-bold whitespace-nowrap">
-                  Góp ý
-              </span>
-          </a>
-      )}
+      {/* Overlay for Mobile Menu (if needed later) */}
+      {isProfileOpen && <div className="fixed inset-0 z-30" onClick={() => setIsProfileOpen(false)}></div>}
+      
+      {/* Otter Chat Widget */}
+      <OtterChat theme={theme} />
     </div>
   );
-}
+};

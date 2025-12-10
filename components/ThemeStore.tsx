@@ -153,6 +153,18 @@ export const ThemeStore: React.FC<ThemeStoreProps> = ({
             vipKey: 'isVipFolklore',
             price: '50.000đ'
         },
+        {
+            id: 'tet2026',
+            name: 'Dọn Nhà Đón Tết',
+            desc: 'Tết Bính Ngọ 2026',
+            icon: '🧹',
+            gradient: 'from-red-600 via-yellow-500 to-red-700',
+            textColor: 'text-red-600',
+            isVip: true,
+            vipKey: 'isVipTet2026',
+            price: 'Miễn phí (Sự kiện)',
+            isEventFree: true
+        },
     ];
 
     const handleSelect = (themeId: ThemeType, isLocked: boolean) => {

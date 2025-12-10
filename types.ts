@@ -17,6 +17,7 @@ export interface UserProfile {
   isVipFolklore?: boolean; // Trạng thái đã mua giao diện Folklore
   isVipTTPD?: boolean; // Trạng thái đã mua giao diện TTPD
   isVipEvermore?: boolean; // Trạng thái đạt được giao diện Evermore (Achievement)
+  isVipTet2026?: boolean; // Trạng thái đã mua giao diện Tết Bính Ngọ 2026
 }
 
 export interface MCQQuestion {

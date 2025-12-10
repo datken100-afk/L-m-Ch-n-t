@@ -442,11 +442,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
               </span>
             </div>
             <div className="flex flex-col items-center justify-center gap-1">
-                <h1 className="text-3xl font-black text-white text-glow-white tracking-tight">AnatomyOtter <span className="text-lg font-mono opacity-80">v1.0</span></h1>
+                <h1 className="text-3xl font-black text-white text-glow-white tracking-tight">AnatomyOtter <span className="text-lg font-mono opacity-80">v1.1</span></h1>
                 
                 {theme !== 'default' && (
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest shadow-sm ${styles.badgeBg}`}>
-                        {theme === 'xmas' ? 'Xmas Edition v1.0' : theme === 'swift' ? "Taylor's Version v1.0" : theme === 'blackpink' ? "Born Pink v1.0" : theme === 'aespa' ? "MY WORLD v1.0" : theme === 'rosie' ? "number one girl" : theme === 'pkl' ? "G1VN Edition" : theme === 'showgirl' ? "The Life of a Showgirl" : ""}
+                        {theme === 'xmas' ? 'Xmas Edition v1.1' : theme === 'swift' ? "Taylor's Version v1.1" : theme === 'blackpink' ? "Born Pink v1.1" : theme === 'aespa' ? "MY WORLD v1.1" : theme === 'rosie' ? "number one girl" : theme === 'pkl' ? "G1VN Edition" : theme === 'showgirl' ? "The Life of a Showgirl" : ""}
                     </span>
                 )}
             </div>
