@@ -8,84 +8,14 @@ import { FlashcardMode } from './components/FlashcardMode';
 import { HistoryMode } from './components/HistoryMode';
 import { InstallPWA } from './components/InstallPWA';
 import { AppMode, UserProfile } from './types';
-import { BookOpen, Activity, ChevronRight, StickyNote, History, Loader2, FlaskConical, Wrench, Clock } from 'lucide-react';
+import { BookOpen, Activity, ChevronRight, StickyNote, History, Loader2, FlaskConical } from 'lucide-react';
 import { auth, db } from './firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 export type ThemeType = 'default' | 'xmas' | 'swift' | 'blackpink' | 'aespa' | 'rosie' | 'pkl' | 'showgirl' | '1989' | 'folklore' | 'ttpd' | 'evermore' | 'tet2026';
 
-// --- MAINTENANCE CONFIGURATION ---
-const MAINTENANCE_END_TIME = new Date('2025-12-11T07:00:00');
-
-const MaintenanceScreen: React.FC = () => {
-    const [timeLeft, setTimeLeft] = useState<string>("--:--:--");
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const now = new Date();
-            const diff = MAINTENANCE_END_TIME.getTime() - now.getTime();
-
-            if (diff <= 0) {
-                clearInterval(interval);
-                window.location.reload(); // Auto reload when time is up
-                return;
-            }
-
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-            const pad = (n: number) => n < 10 ? `0${n}` : n;
-            setTimeLeft(`${pad(hours)} giờ : ${pad(minutes)} phút : ${pad(seconds)} giây`);
-        }, 1000);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    return (
-        <div className="fixed inset-0 z-[9999] bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
-            {/* Background Texture */}
-            <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] pointer-events-none"></div>
-            
-            <div className="relative z-10 animate-in fade-in zoom-in duration-500 flex flex-col items-center">
-                <div className="w-40 h-40 bg-slate-800 rounded-full flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(56,189,248,0.3)] border-4 border-slate-700 relative">
-                    <span className="text-8xl animate-bounce">🦦</span>
-                    <div className="absolute -bottom-2 -right-2 bg-blue-600 p-3 rounded-full border-4 border-slate-900 animate-spin-slow">
-                        <Wrench className="w-8 h-8 text-white" />
-                    </div>
-                </div>
-
-                <h1 className="text-3xl md:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
-                    Hệ thống đang bảo trì
-                </h1>
-                
-                <p className="text-slate-400 text-lg md:text-xl max-w-xl mb-10 leading-relaxed">
-                    Chúng mình đang nâng cấp tính năng mới cho Rái cá. <br/>
-                    Xin lỗi vì sự bất tiện này!
-                </p>
-
-                <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700 p-6 rounded-2xl shadow-2xl min-w-[300px]">
-                    <div className="flex items-center justify-center gap-2 text-blue-400 font-bold uppercase tracking-widest text-xs mb-2">
-                        <Clock className="w-4 h-4" /> Thời gian còn lại
-                    </div>
-                    <div className="font-mono text-2xl md:text-4xl font-black text-white tabular-nums tracking-wide">
-                        {timeLeft}
-                    </div>
-                </div>
-
-                <div className="mt-8 text-slate-500 text-sm font-medium">
-                    Tự động tải lại khi hoàn tất.
-                </div>
-            </div>
-        </div>
-    );
-};
-
 const App: React.FC = () => {
-  // --- MAINTENANCE CHECK ---
-  const [isMaintenance] = useState(() => new Date() < MAINTENANCE_END_TIME);
-
   const [user, setUser] = useState<UserProfile | null>(null);
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [darkMode, setDarkMode] = useState(false);
@@ -446,11 +376,6 @@ const App: React.FC = () => {
         );
     }
   };
-
-  // --- RETURN MAINTENANCE MODE IF ACTIVE ---
-  if (isMaintenance) {
-      return <MaintenanceScreen />;
-  }
 
   if (isSessionLoading) {
       return (
