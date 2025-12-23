@@ -166,6 +166,12 @@ const App: React.FC = () => {
                 }
             } catch (e) {
                 console.error("Error fetching user data", e);
+                // Fallback for Permission Denied or Network Errors
+                setUser({
+                    uid: currentUser.uid,
+                    fullName: currentUser.displayName || "Sinh viên",
+                    studentId: "N/A"
+                });
             }
         } else {
             setUser(null);

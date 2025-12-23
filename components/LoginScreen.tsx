@@ -76,6 +76,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
               return 'Đã thử quá nhiều lần. Vui lòng thử lại sau.';
           case 'auth/credential-already-in-use':
               return 'Thông tin đăng nhập đã được sử dụng.';
+          case 'permission-denied':
+              return 'Lỗi quyền truy cập dữ liệu (Permission Denied). Đang thử đăng nhập lại...';
           default:
               return `Lỗi: ${errorCode}`;
       }
@@ -97,24 +99,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
     try {
         // 1. Login with Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const uid = userCredential.user.uid;
         
         // 2. Fetch extra User Data from Firestore
-        const userDocRef = doc(db, "users", userCredential.user.uid);
-        const userDoc = await getDoc(userDocRef);
+        let userData: any = null;
+        try {
+            const userDocRef = doc(db, "users", uid);
+            const userDoc = await getDoc(userDocRef);
 
-        if (userDoc.exists()) {
-            const userData = userDoc.data();
+            if (userDoc.exists()) {
+                userData = userDoc.data();
+            }
+        } catch (firestoreError) {
+            console.warn("Firestore Read Error (ignoring for login):", firestoreError);
+            // Fallthrough: If we can't read profile (permission-denied), we still allow login with basic auth info.
+        }
+
+        if (userData) {
             onLogin({
-                uid: userCredential.user.uid,
+                uid: uid,
                 fullName: userData.fullName,
                 studentId: userData.studentId,
                 avatar: userData.avatar || undefined,
-                isVipShowgirl: userData.isVipShowgirl || false // Retrieve VIP status
+                isVipShowgirl: userData.isVipShowgirl || false,
+                isVip1989: userData.isVip1989,
+                isVipFolklore: userData.isVipFolklore,
+                isVipTTPD: userData.isVipTTPD,
+                isVipEvermore: userData.isVipEvermore,
+                isVipTet2026: userData.isVipTet2026
             });
         } else {
-             // Fallback if user exists in Auth but not in Firestore (Unlikely but safe)
+             // Fallback if user exists in Auth but not in Firestore OR if Permission Denied
              onLogin({
-                uid: userCredential.user.uid,
+                uid: uid,
                 fullName: userCredential.user.displayName || email.split('@')[0],
                 studentId: "N/A",
                 avatar: undefined,
@@ -143,7 +160,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
     }
 
     // --- 1. VALIDATE AGAINST WHITELIST ---
-    // Helper to normalize Vietnamese strings (handles composed vs decomposed unicode, e.g. Thùy vs Thuỳ)
     const normalizeStr = (str: string) => str.trim().toLowerCase().normalize("NFC");
 
     const isAllowed = STUDENT_WHITELIST.find(s => 
@@ -160,11 +176,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
 
     try {
         // --- 2. CHECK FOR DUPLICATE STUDENT ID IN FIRESTORE ---
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("studentId", "==", trimmedStudentId));
-        const querySnapshot = await getDocs(q);
+        let isDuplicate = false;
+        try {
+            const usersRef = collection(db, "users");
+            const q = query(usersRef, where("studentId", "==", trimmedStudentId));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                isDuplicate = true;
+            }
+        } catch (dbError) {
+            console.warn("Could not check duplicates due to permissions", dbError);
+            // Proceed cautiously if we can't check
+        }
 
-        if (!querySnapshot.empty) {
+        if (isDuplicate) {
             setError('Mã số sinh viên này đã được đăng ký tài khoản.');
             setIsLoading(false);
             return;
@@ -184,7 +209,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
             createdAt: new Date().toISOString()
         };
 
-        await setDoc(doc(db, "users", uid), newUser);
+        try {
+            await setDoc(doc(db, "users", uid), newUser);
+        } catch (writeErr) {
+            console.error("Failed to write profile", writeErr);
+            // Proceed even if write fails (Auth succeeded)
+        }
         
         // --- 5. Auto Login ---
         onLogin({
@@ -250,7 +280,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, darkMode, tog
           
       } catch (err: any) {
           console.error("Reset Password Error:", err);
-          setError(translateFirebaseError(err.code));
+          if (err.code === 'permission-denied') {
+              setError('Hệ thống đang bảo trì quyền truy cập. Vui lòng liên hệ Admin để được hỗ trợ đặt lại mật khẩu.');
+          } else {
+              setError(translateFirebaseError(err.code));
+          }
       } finally {
           setIsLoading(false);
       }
