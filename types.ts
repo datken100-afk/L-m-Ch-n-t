@@ -5,6 +5,7 @@ export enum AppMode {
   STATION = 'STATION', // Chạy trạm
   FLASHCARD = 'FLASHCARD', // Thẻ ghi nhớ
   HISTORY = 'HISTORY', // Lịch sử thi
+  SCHEDULE = 'SCHEDULE', // Lịch thi
 }
 
 export interface UserProfile {

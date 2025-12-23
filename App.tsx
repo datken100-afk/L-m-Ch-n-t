@@ -6,9 +6,10 @@ import { MCQMode } from './components/MCQMode';
 import { StationMode } from './components/StationMode';
 import { FlashcardMode } from './components/FlashcardMode';
 import { HistoryMode } from './components/HistoryMode';
+import { ScheduleMode } from './components/ScheduleMode';
 import { InstallPWA } from './components/InstallPWA';
 import { AppMode, UserProfile } from './types';
-import { BookOpen, Activity, ChevronRight, StickyNote, History, Loader2, FlaskConical } from 'lucide-react';
+import { BookOpen, Activity, ChevronRight, StickyNote, History, Loader2, FlaskConical, Calendar } from 'lucide-react';
 import { auth, db } from './firebaseConfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
@@ -210,12 +211,13 @@ const App: React.FC = () => {
 
   // --- DYNAMIC CARD STYLING LOGIC ---
   const getCardStyles = (theme: ThemeType, index: number) => {
-      // Default Palettes (MCQ, Station, Flashcard, History)
+      // Default Palettes (MCQ, Station, Flashcard, History, Schedule)
       const defaultPalette = [
           { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', deco: 'bg-blue-500/10' },
           { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-600 dark:text-emerald-400', deco: 'bg-emerald-500/10' },
           { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-600 dark:text-amber-400', deco: 'bg-amber-500/10' },
           { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', deco: 'bg-purple-500/10' },
+          { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-600 dark:text-cyan-400', deco: 'bg-cyan-500/10' }, // Added for Schedule
       ];
 
       const palettes: Record<ThemeType, typeof defaultPalette> = {
@@ -225,72 +227,84 @@ const App: React.FC = () => {
               { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400', deco: 'bg-green-500/10' },
               { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-600 dark:text-yellow-400', deco: 'bg-yellow-500/10' },
               { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-600 dark:text-sky-400', deco: 'bg-sky-500/10' },
+              { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', deco: 'bg-purple-500/10' },
           ],
           showgirl: [
               { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-600 dark:text-teal-400', deco: 'bg-teal-500/10' },
               { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-600 dark:text-orange-400', deco: 'bg-orange-500/10' },
               { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-600 dark:text-yellow-400', deco: 'bg-yellow-500/10' },
               { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-600 dark:text-rose-400', deco: 'bg-rose-500/10' },
+              { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', deco: 'bg-indigo-500/10' },
           ],
           swift: [
               { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', deco: 'bg-purple-500/10' },
               { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-600 dark:text-pink-400', deco: 'bg-pink-500/10' },
               { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', deco: 'bg-indigo-500/10' },
               { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', deco: 'bg-blue-500/10' },
+              { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-600 dark:text-rose-400', deco: 'bg-rose-500/10' },
           ],
           blackpink: [
               { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-600 dark:text-pink-400', deco: 'bg-pink-500/10' },
               { bg: 'bg-zinc-100 dark:bg-zinc-800', text: 'text-zinc-600 dark:text-zinc-400', deco: 'bg-zinc-500/10' },
               { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-600 dark:text-rose-400', deco: 'bg-rose-500/10' },
               { bg: 'bg-slate-200 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
+              { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', deco: 'bg-gray-500/10' },
           ],
           aespa: [
               { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', deco: 'bg-indigo-500/10' },
               { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-600 dark:text-violet-400', deco: 'bg-violet-500/10' },
               { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-600 dark:text-sky-400', deco: 'bg-sky-500/10' },
               { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
+              { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-600 dark:text-purple-400', deco: 'bg-purple-500/10' },
           ],
           rosie: [
               { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-600 dark:text-rose-400', deco: 'bg-rose-500/10' },
               { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-600 dark:text-red-400', deco: 'bg-red-500/10' },
               { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-600 dark:text-pink-400', deco: 'bg-pink-500/10' },
               { bg: 'bg-stone-100 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-400', deco: 'bg-stone-500/10' },
+              { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
           ],
           pkl: [
               { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-600 dark:text-cyan-400', deco: 'bg-cyan-500/10' },
               { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-600 dark:text-sky-400', deco: 'bg-sky-500/10' },
               { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', deco: 'bg-blue-500/10' },
               { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
+              { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', deco: 'bg-indigo-500/10' },
           ],
           '1989': [
               { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-600 dark:text-sky-400', deco: 'bg-sky-500/10' },
               { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-600 dark:text-blue-400', deco: 'bg-blue-500/10' },
               { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-600 dark:text-indigo-400', deco: 'bg-indigo-500/10' },
               { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
+              { bg: 'bg-cyan-100 dark:bg-cyan-900/30', text: 'text-cyan-600 dark:text-cyan-400', deco: 'bg-cyan-500/10' },
           ],
           folklore: [
               { bg: 'bg-zinc-100 dark:bg-zinc-800', text: 'text-zinc-600 dark:text-zinc-400', deco: 'bg-zinc-500/10' },
               { bg: 'bg-stone-100 dark:bg-stone-800', text: 'text-stone-600 dark:text-stone-400', deco: 'bg-stone-500/10' },
               { bg: 'bg-slate-100 dark:bg-slate-800', text: 'text-slate-600 dark:text-slate-400', deco: 'bg-slate-500/10' },
               { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-400', deco: 'bg-gray-500/10' },
+              { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', deco: 'bg-emerald-500/10' },
           ],
           ttpd: [
               { bg: 'bg-stone-200 dark:bg-stone-800', text: 'text-stone-700 dark:text-stone-300', deco: 'bg-stone-500/10' },
               { bg: 'bg-neutral-200 dark:bg-neutral-800', text: 'text-neutral-700 dark:text-neutral-300', deco: 'bg-neutral-500/10' },
               { bg: 'bg-zinc-200 dark:bg-zinc-800', text: 'text-zinc-700 dark:text-zinc-300', deco: 'bg-zinc-500/10' },
               { bg: 'bg-slate-200 dark:bg-slate-800', text: 'text-slate-700 dark:text-slate-300', deco: 'bg-slate-500/10' },
+              { bg: 'bg-gray-200 dark:bg-gray-800', text: 'text-gray-700 dark:text-gray-300', deco: 'bg-gray-500/10' },
           ],
           evermore: [
               { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400', deco: 'bg-amber-500/10' },
               { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', deco: 'bg-orange-500/10' },
               { bg: 'bg-stone-100 dark:bg-stone-800', text: 'text-stone-700 dark:text-stone-400', deco: 'bg-stone-500/10' },
               { bg: 'bg-yellow-900/10 dark:bg-yellow-900/20', text: 'text-yellow-800 dark:text-yellow-500', deco: 'bg-yellow-500/10' },
+              { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', deco: 'bg-red-500/10' },
           ],
           tet2026: [
               { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400', deco: 'bg-red-500/10' },
               { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', deco: 'bg-yellow-500/10' },
               { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', deco: 'bg-orange-500/10' },
               { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-400', deco: 'bg-emerald-500/10' },
+              { bg: 'bg-sky-100 dark:bg-sky-900/30', text: 'text-sky-700 dark:text-sky-400', deco: 'bg-sky-500/10' },
           ]
       };
 
@@ -307,8 +321,10 @@ const App: React.FC = () => {
         return <FlashcardMode onBack={() => setMode(AppMode.HOME)} theme={theme} user={user!} />;
       case AppMode.HISTORY:
         return <HistoryMode onBack={() => setMode(AppMode.HOME)} theme={theme} user={user!} />;
+      case AppMode.SCHEDULE:
+        return <ScheduleMode onBack={() => setMode(AppMode.HOME)} theme={theme} />;
       default:
-        // Config for the 4 Main Cards
+        // Config for the Main Cards
         const cardConfig = [
             { 
                 title: "Thi Trắc Nghiệm", 
@@ -337,6 +353,13 @@ const App: React.FC = () => {
                 icon: <History className="w-8 h-8" />,
                 action: () => setMode(AppMode.HISTORY),
                 btnText: "Xem chi tiết"
+            },
+            { 
+                title: "Lịch Thi", 
+                desc: "Tra cứu lịch thi học kỳ và đếm ngược ngày thi.",
+                icon: <Calendar className="w-8 h-8" />,
+                action: () => setMode(AppMode.SCHEDULE),
+                btnText: "Xem lịch"
             }
         ];
 
