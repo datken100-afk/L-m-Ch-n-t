@@ -68,7 +68,10 @@ const App: React.FC = () => {
       const startTTPD = new Date('2025-11-24T00:00:00');
       const endTTPD = new Date('2025-12-31T23:59:59');
       
-      if (now >= startTTPD && now <= endTTPD && !userData.isVipTTPD) {
+      // Check Firestore OR LocalStorage (backup if permissions fail)
+      const hasReceivedTTPD = userData.isVipTTPD || localStorage.getItem('gift_ttpd_received');
+
+      if (now >= startTTPD && now <= endTTPD && !hasReceivedTTPD) {
           setShowTTPDGift(true);
           return; // Show one gift at a time
       }
@@ -80,58 +83,63 @@ const App: React.FC = () => {
       }
 
       // 3. Tet 2026 Gift Logic (Dọn Nhà)
+      const hasReceivedTet = userData.isVipTet2026 || localStorage.getItem('gift_tet_received');
       // Always show if not unlocked yet (Simulated timeframe: active now)
-      if (!userData.isVipTet2026) {
+      if (!hasReceivedTet) {
           setShowTetGift(true);
           return;
       }
   };
 
   const handleCloseSwiftGift = async () => {
-      if (user && user.uid) {
-          try {
-              // Grant Swift VIP access
-              await updateDoc(doc(db, "users", user.uid), {
-                  isVipSwift: true // Add this field if needed in UserProfile
-              });
-              // Update local state
-              setUser(prev => prev ? ({ ...prev }) : null);
-          } catch (e) {
-              console.error("Error saving gift status", e);
-          }
-      }
+      // 1. Apply Local Updates Immediately
+      setUser(prev => prev ? ({ ...prev, isVipSwift: true } as any) : null);
+      localStorage.setItem('gift_swift_received', 'true');
       setShowSwiftGift(false);
       setTheme('swift');
+
+      // 2. Try Persisting to Cloud
+      if (user && user.uid) {
+          try {
+              await updateDoc(doc(db, "users", user.uid), { isVipSwift: true });
+          } catch (e) {
+              console.warn("Could not save Swift gift to DB (Permission denied or Network)", e);
+          }
+      }
   };
 
   const handleCloseTTPDGift = async () => {
-      if (user && user.uid) {
-          try {
-              await updateDoc(doc(db, "users", user.uid), {
-                  isVipTTPD: true
-              });
-              setUser(prev => prev ? ({ ...prev, isVipTTPD: true }) : null);
-          } catch (e) {
-              console.error("Error saving TTPD gift", e);
-          }
-      }
+      // 1. Apply Local Updates Immediately
+      setUser(prev => prev ? ({ ...prev, isVipTTPD: true }) : null);
+      localStorage.setItem('gift_ttpd_received', 'true');
       setShowTTPDGift(false);
       setTheme('ttpd');
+
+      // 2. Try Persisting to Cloud
+      if (user && user.uid) {
+          try {
+              await updateDoc(doc(db, "users", user.uid), { isVipTTPD: true });
+          } catch (e) {
+              console.warn("Could not save TTPD gift to DB (Permission denied or Network)", e);
+          }
+      }
   };
 
   const handleCloseTetGift = async () => {
-      if (user && user.uid) {
-          try {
-              await updateDoc(doc(db, "users", user.uid), {
-                  isVipTet2026: true
-              });
-              setUser(prev => prev ? ({ ...prev, isVipTet2026: true }) : null);
-          } catch (e) {
-              console.error("Error saving Tet gift", e);
-          }
-      }
+      // 1. Apply Local Updates Immediately
+      setUser(prev => prev ? ({ ...prev, isVipTet2026: true }) : null);
+      localStorage.setItem('gift_tet_received', 'true');
       setShowTetGift(false);
       setTheme('tet2026');
+
+      // 2. Try Persisting to Cloud
+      if (user && user.uid) {
+          try {
+              await updateDoc(doc(db, "users", user.uid), { isVipTet2026: true });
+          } catch (e) {
+              console.warn("Could not save Tet gift to DB (Permission denied or Network)", e);
+          }
+      }
   };
 
   // Auth Listener
@@ -158,21 +166,25 @@ const App: React.FC = () => {
                     setUser(fullProfile);
                     checkAndShowGift(fullProfile);
                 } else {
-                    // Fallback basic info
-                    setUser({
+                    // Fallback basic info (Doc doesn't exist)
+                    const fallbackUser = {
                         uid: currentUser.uid,
                         fullName: currentUser.displayName || "Sinh viên",
                         studentId: "N/A"
-                    });
+                    };
+                    setUser(fallbackUser);
+                    checkAndShowGift(fallbackUser);
                 }
             } catch (e) {
-                console.error("Error fetching user data", e);
+                console.warn("Error fetching user data (likely permission-denied). Using Auth info only.");
                 // Fallback for Permission Denied or Network Errors
-                setUser({
+                const fallbackUser = {
                     uid: currentUser.uid,
                     fullName: currentUser.displayName || "Sinh viên",
                     studentId: "N/A"
-                });
+                };
+                setUser(fallbackUser);
+                checkAndShowGift(fallbackUser);
             }
         } else {
             setUser(null);
@@ -195,7 +207,9 @@ const App: React.FC = () => {
   };
 
   const handleUpdateUser = async (updatedUser: UserProfile) => {
+      // Optimistic update locally
       setUser(updatedUser);
+      
       if (user?.uid) {
           try {
               await updateDoc(doc(db, "users", user.uid), {
@@ -204,7 +218,8 @@ const App: React.FC = () => {
                   avatar: updatedUser.avatar
               });
           } catch (e) {
-              console.error("Error updating user", e);
+              console.warn("Error updating user profile in DB", e);
+              // We don't revert local state because it's better to keep the UI consistent for the session
           }
       }
   };
